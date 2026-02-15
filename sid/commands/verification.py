@@ -1,43 +1,12 @@
 import sys
 import os
-import json
 from sid.utils.executor import execute_command
+from sid.utils.ui import find_element
 
 STATE_FILE = "/tmp/sid_last_bundle_id"
 
-def _get_ui_tree():
-    try:
-        output = execute_command(["idb", "ui", "describe-all"], capture_output=True)
-        if not output:
-            return []
-        try:
-            return json.loads(output)
-        except json.JSONDecodeError:
-            return []
-    except Exception as e:
-        print(f"Error fetching UI tree: {e}", file=sys.stderr)
-        return []
-
-def _find_element(query: str):
-    elements = _get_ui_tree()
-    if not elements:
-        return None
-    # 1. Exact Match: Accessibility Identifier
-    for el in elements:
-        if el.get("AXIdentifier") == query:
-            return el
-
-    # 2. Fuzzy Match: Label text
-    query_lower = query.lower()
-    for el in elements:
-        label = el.get("AXLabel", "")
-        if label and query_lower in label.lower():
-            return el
-
-    return None
-
 def assert_cmd(query: str, state: str):
-    el = _find_element(query)
+    el = find_element(query)
 
     if state == "exists" or state == "visible":
         if el:

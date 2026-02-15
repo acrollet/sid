@@ -1,22 +1,14 @@
 import json
 import sys
 from sid.utils.executor import execute_command
+from sid.utils.ui import get_ui_tree
 
 def inspect_cmd(interactive_only: bool = True, depth: int = None):
-    try:
-        # idb ui describe-all returns a JSON list of elements
-        output = execute_command(["idb", "ui", "describe-all"])
+    if depth is not None:
+        print("WARNING: Depth filtering is not fully supported yet.", file=sys.stderr)
 
-        try:
-            elements = json.loads(output)
-        except json.JSONDecodeError:
-            # If output is not JSON, it might be an error message or empty
-            # For dry run or mock, if empty return empty list
-            if not output:
-                elements = []
-            else:
-                print(f"Error: Invalid JSON from idb: {output}", file=sys.stderr)
-                return
+    try:
+        elements = get_ui_tree()
 
         filtered_elements = []
         for el in elements:

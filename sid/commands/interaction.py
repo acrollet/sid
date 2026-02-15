@@ -1,59 +1,15 @@
 import sys
-import json
 import time
 from sid.utils.executor import execute_command
-
-def _get_ui_tree():
-    try:
-        output = execute_command(["idb", "ui", "describe-all"], capture_output=True)
-        if not output:
-            return []
-        try:
-            return json.loads(output)
-        except json.JSONDecodeError:
-            return []
-    except Exception as e:
-        print(f"Error fetching UI tree: {e}", file=sys.stderr)
-        return []
-
-def _find_element(query: str):
-    elements = _get_ui_tree()
-    if not elements:
-        return None
-    # 1. Exact Match: Accessibility Identifier
-    for el in elements:
-        if el.get("AXIdentifier") == query:
-            return el
-
-    # 2. Fuzzy Match: Label text
-    query_lower = query.lower()
-    for el in elements:
-        label = el.get("AXLabel", "")
-        # Check if label contains query or matches
-        if label and query_lower in label.lower():
-            return el
-
-    return None
-
-def _get_center(frame):
-    if isinstance(frame, dict):
-        try:
-            x = float(frame.get('x', 0))
-            y = float(frame.get('y', 0))
-            w = float(frame.get('w', 0))
-            h = float(frame.get('h', 0))
-            return x + w / 2, y + h / 2
-        except (ValueError, TypeError):
-            return None
-    return None
+from sid.utils.ui import get_ui_tree, find_element, get_center
 
 def tap_cmd(query: str = None, x: int = None, y: int = None):
     target_x, target_y = None, None
 
     if query:
-        el = _find_element(query)
+        el = find_element(query)
         if el:
-            center = _get_center(el.get("frame", {}))
+            center = get_center(el.get("frame", {}))
             if center:
                 target_x, target_y = center
             else:
@@ -90,8 +46,7 @@ def scroll_cmd(direction: str, until_visible: str = None):
     w, h = 375, 812 # Default fallback
 
     # Try to get screen dimensions from inspect
-    # We catch exceptions internally in _get_ui_tree
-    tree = _get_ui_tree()
+    tree = get_ui_tree()
     if tree:
         for el in tree:
             if el.get("role") == "Window":
@@ -131,7 +86,7 @@ def scroll_cmd(direction: str, until_visible: str = None):
     if until_visible:
         max_retries = 10
         # Check first before scrolling
-        if _find_element(until_visible):
+        if find_element(until_visible):
             print(f"Element '{until_visible}' found.")
             return
 
@@ -139,7 +94,7 @@ def scroll_cmd(direction: str, until_visible: str = None):
             print(f"Element '{until_visible}' not found. Scrolling {direction} ({i+1}/{max_retries})...")
             perform_scroll()
             time.sleep(1.0) # Wait for animation
-            if _find_element(until_visible):
+            if find_element(until_visible):
                 print(f"Element '{until_visible}' found.")
                 return
         print(f"Element '{until_visible}' not found after scrolling.", file=sys.stderr)

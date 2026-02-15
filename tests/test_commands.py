@@ -12,14 +12,14 @@ import sid.commands.verification as verification
 
 class TestCommands(unittest.TestCase):
 
-    @patch('sid.commands.vision.execute_command')
-    def test_inspect_basic(self, mock_exec):
-        # Mock idb output
+    @patch('sid.commands.vision.get_ui_tree')
+    def test_inspect_basic(self, mock_get_tree):
+        # Mock tree structure
         mock_data = [
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login", "frame": {"x": 10, "y": 20, "w": 100, "h": 50}},
             {"role": "Window", "AXIdentifier": "win1", "frame": {"x": 0, "y": 0, "w": 375, "h": 812}}
         ]
-        mock_exec.return_value = json.dumps(mock_data)
+        mock_get_tree.return_value = mock_data
 
         captured_output = StringIO()
         sys.stdout = captured_output
@@ -33,20 +33,14 @@ class TestCommands(unittest.TestCase):
         self.assertIn('"type": "Button"', output)
         self.assertNotIn('"type": "Window"', output) # Interactive only filters window
 
+    @patch('sid.utils.ui.get_ui_tree') # Patch where find_element looks it up
     @patch('sid.commands.interaction.execute_command')
-    def test_tap_with_query(self, mock_exec):
-        # Mock describe-all call first
+    def test_tap_with_query(self, mock_exec, mock_get_tree):
+        # Mock tree
         mock_data = [
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login", "frame": {"x": 10, "y": 20, "w": 100, "h": 50}}
         ]
-
-        # side_effect to return mock_data for describe-all, and None for tap
-        def side_effect(cmd, **kwargs):
-            if cmd == ["idb", "ui", "describe-all"]:
-                return json.dumps(mock_data)
-            return ""
-
-        mock_exec.side_effect = side_effect
+        mock_get_tree.return_value = mock_data
 
         interaction.tap_cmd(query="btn1")
 
@@ -65,11 +59,12 @@ class TestCommands(unittest.TestCase):
         mock_exec.assert_any_call(expected_launch)
 
     @patch('sid.commands.verification.execute_command')
-    def test_assert_exists(self, mock_exec):
+    @patch('sid.utils.ui.get_ui_tree')
+    def test_assert_exists(self, mock_get_tree, mock_exec):
         mock_data = [
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login"}
         ]
-        mock_exec.return_value = json.dumps(mock_data)
+        mock_get_tree.return_value = mock_data
 
         captured_output = StringIO()
         sys.stdout = captured_output
@@ -81,10 +76,10 @@ class TestCommands(unittest.TestCase):
         output = captured_output.getvalue().strip()
         self.assertEqual(output, "PASS")
 
-    @patch('sid.commands.verification.execute_command')
-    def test_assert_fail(self, mock_exec):
+    @patch('sid.utils.ui.get_ui_tree')
+    def test_assert_fail(self, mock_get_tree):
         mock_data = [] # Empty
-        mock_exec.return_value = json.dumps(mock_data)
+        mock_get_tree.return_value = mock_data
 
         captured_output = StringIO()
         sys.stdout = captured_output
@@ -97,5 +92,5 @@ class TestCommands(unittest.TestCase):
         output = captured_output.getvalue().strip()
         self.assertTrue(output.startswith("FAIL"))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
