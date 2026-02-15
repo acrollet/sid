@@ -6,68 +6,79 @@ from sid.commands.system import launch_cmd, open_cmd, permission_cmd, location_c
 from sid.commands.verification import assert_cmd, logs_cmd, tree_cmd
 
 def main():
-    parser = argparse.ArgumentParser(description="Sid: A Token-Efficient CLI for iOS Automation")
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    parser = argparse.ArgumentParser(
+        description="Sid: A Token-Efficient CLI for iOS Automation",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  sid launch com.myapp.beta --clean
+  sid inspect --interactive-only
+  sid tap "Log In"
+  sid type "user@example.com" --submit
+  sid assert "Welcome" visible
+"""
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
     # Vision
-    inspect_parser = subparsers.add_parser("inspect", help="Inspect UI hierarchy")
-    inspect_parser.add_argument("--interactive-only", action="store_true", default=True, help="Filter for interactive elements (default)")
-    inspect_parser.add_argument("--all", action="store_false", dest="interactive_only", help="Show all elements (disable interactive-only filter)")
-    inspect_parser.add_argument("--depth", type=int, help="Limit depth")
+    inspect_parser = subparsers.add_parser("inspect", help="Inspect UI hierarchy and return a simplified JSON tree.")
+    inspect_parser.add_argument("--interactive-only", action="store_true", default=True, help="Filter out structural containers and keep actionable elements (Button, TextField, Cell, Switch, StaticText). Default: True")
+    inspect_parser.add_argument("--all", action="store_false", dest="interactive_only", help="Show all elements, disabling the interactive-only filter.")
+    inspect_parser.add_argument("--depth", type=int, help="Limit the hierarchy depth to save tokens. (Note: Partial support)")
 
-    screenshot_parser = subparsers.add_parser("screenshot", help="Capture screenshot")
-    screenshot_parser.add_argument("filename", help="Output filename")
-    screenshot_parser.add_argument("--mask-text", action="store_true", help="Mask text (not implemented)")
+    screenshot_parser = subparsers.add_parser("screenshot", help="Capture the visual state for verification.")
+    screenshot_parser.add_argument("filename", help="The output filename for the screenshot (e.g., screen.png).")
+    screenshot_parser.add_argument("--mask-text", action="store_true", help="Redact text for privacy/security (Not Implemented).")
 
     # Interaction
-    tap_parser = subparsers.add_parser("tap", help="Tap an element")
-    tap_parser.add_argument("query", nargs="?", help="Element query (ID or label)")
-    tap_parser.add_argument("--x", type=int, help="X coordinate")
-    tap_parser.add_argument("--y", type=int, help="Y coordinate")
+    tap_parser = subparsers.add_parser("tap", help="Tap a UI element.")
+    tap_parser.add_argument("query", nargs="?", help="The accessibility identifier or label text to match (fuzzy match).")
+    tap_parser.add_argument("--x", type=int, help="Fallback X coordinate if query fails or is not provided.")
+    tap_parser.add_argument("--y", type=int, help="Fallback Y coordinate if query fails or is not provided.")
 
-    type_parser = subparsers.add_parser("type", help="Type text")
-    type_parser.add_argument("text", help="Text to type")
-    type_parser.add_argument("--submit", action="store_true", help="Press Enter after typing")
+    type_parser = subparsers.add_parser("type", help="Input text into the currently focused field.")
+    type_parser.add_argument("text", help="The text string to type.")
+    type_parser.add_argument("--submit", action="store_true", help="Press 'Return/Enter' on the keyboard after typing.")
 
-    scroll_parser = subparsers.add_parser("scroll", help="Scroll")
-    scroll_parser.add_argument("direction", choices=["up", "down", "left", "right"], help="Direction")
-    scroll_parser.add_argument("--until-visible", help="Scroll until element is visible")
+    scroll_parser = subparsers.add_parser("scroll", help="Scroll the screen.")
+    scroll_parser.add_argument("direction", choices=["up", "down", "left", "right"], help="The direction to scroll.")
+    scroll_parser.add_argument("--until-visible", help="Scroll repeatedly until the specified element (ID or label) becomes visible in the inspect tree.")
 
-    gesture_parser = subparsers.add_parser("gesture", help="Perform gesture")
-    gesture_parser.add_argument("type", choices=["swipe", "pinch"], help="Gesture type")
-    gesture_parser.add_argument("args", nargs=argparse.REMAINDER, help="Gesture arguments")
+    gesture_parser = subparsers.add_parser("gesture", help="Perform a specific gesture.")
+    gesture_parser.add_argument("type", choices=["swipe", "pinch"], help="The type of gesture to perform.")
+    gesture_parser.add_argument("args", nargs=argparse.REMAINDER, help="Arguments for the gesture (e.g., start_x,start_y end_x,end_y for swipe).")
 
     # System
-    launch_parser = subparsers.add_parser("launch", help="Launch app")
-    launch_parser.add_argument("bundle_id", help="App Bundle ID")
-    launch_parser.add_argument("--clean", action="store_true", help="Clean install simulation")
-    launch_parser.add_argument("--args", help="Launch arguments")
-    launch_parser.add_argument("--locale", help="Locale code")
+    launch_parser = subparsers.add_parser("launch", help="Launch an application.")
+    launch_parser.add_argument("bundle_id", help="The Bundle ID of the app to launch (e.g., com.example.app).")
+    launch_parser.add_argument("--clean", action="store_true", help="Wipe the app container before launching to simulate a fresh install.")
+    launch_parser.add_argument("--args", help="Launch arguments to pass to the app (e.g., '-TakingScreenshots YES').")
+    launch_parser.add_argument("--locale", help="Launch the app in a specific language/locale (e.g., es-MX).")
 
-    open_parser = subparsers.add_parser("open", help="Open URL")
-    open_parser.add_argument("url", help="URL to open")
+    open_parser = subparsers.add_parser("open", help="Open a URL scheme or Universal Link.")
+    open_parser.add_argument("url", help="The URL to open (e.g., myapp://settings).")
 
-    perm_parser = subparsers.add_parser("permission", help="Manage permissions")
-    perm_parser.add_argument("service", help="Service (camera, photos, etc)")
-    perm_parser.add_argument("status", choices=["grant", "deny", "reset"], help="Status")
+    perm_parser = subparsers.add_parser("permission", help="Manage TCC (Privacy) permissions.")
+    perm_parser.add_argument("service", help="The service to modify (camera, photos, location, microphone, etc).")
+    perm_parser.add_argument("status", choices=["grant", "deny", "reset"], help="The permission status to apply.")
 
-    loc_parser = subparsers.add_parser("location", help="Set location")
-    loc_parser.add_argument("lat", help="Latitude")
-    loc_parser.add_argument("lon", help="Longitude")
+    loc_parser = subparsers.add_parser("location", help="Simulate GPS coordinates.")
+    loc_parser.add_argument("lat", help="Latitude.")
+    loc_parser.add_argument("lon", help="Longitude.")
 
-    net_parser = subparsers.add_parser("network", help="Network conditions")
-    net_parser.add_argument("condition", help="Condition")
+    net_parser = subparsers.add_parser("network", help="Simulate network conditions (Not Supported).")
+    net_parser.add_argument("condition", help="The network condition to apply.")
 
     # Verification
-    assert_parser = subparsers.add_parser("assert", help="Assert UI state")
-    assert_parser.add_argument("query", help="Element query")
-    assert_parser.add_argument("state", help="Expected state (exists, visible, hidden, text=val)")
+    assert_parser = subparsers.add_parser("assert", help="Perform a quick boolean check on the UI state.")
+    assert_parser.add_argument("query", help="The element identifier or label to check.")
+    assert_parser.add_argument("state", help="The expected state: 'exists', 'visible', 'hidden', or 'text=value'.")
 
-    logs_parser = subparsers.add_parser("logs", help="Fetch logs")
-    logs_parser.add_argument("--crash-report", action="store_true", help="Check for crash")
+    logs_parser = subparsers.add_parser("logs", help="Fetch the tail of the system log for the target app.")
+    logs_parser.add_argument("--crash-report", action="store_true", help="Check if a crash log was generated in the last session.")
 
-    tree_parser = subparsers.add_parser("tree", help="List files")
-    tree_parser.add_argument("directory", help="Directory (documents, caches, tmp)")
+    tree_parser = subparsers.add_parser("tree", help="List files in the app's sandbox containers.")
+    tree_parser.add_argument("directory", help="The directory to list: 'documents', 'caches', or 'tmp'.")
 
     args = parser.parse_args()
 
