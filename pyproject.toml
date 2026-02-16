@@ -1,0 +1,14 @@
+[project]
+name = "sid"
+version = "0.1.0"
+description = "A Token-Efficient CLI for iOS Automation"
+readme = "SPEC.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+sid = "sid.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
