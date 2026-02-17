@@ -221,5 +221,18 @@ class TestCommands(unittest.TestCase):
         output = captured_output.getvalue()
         self.assertIn("PASS: Element 'btn1' is visible.", output)
 
+    @patch('sid.utils.ui.get_ui_tree')
+    @patch('sid.commands.interaction.execute_command')
+    def test_tap_partial_label(self, mock_exec, mock_get_tree):
+        # Mock tree with a long label
+        mock_data = [
+            {"role": "Button", "AXIdentifier": "id123", "AXLabel": "Welcome to the App", "frame": {"x": 0, "y": 0, "w": 100, "h": 100}}
+        ]
+        mock_get_tree.return_value = mock_data
+
+        # Should match "Welcome"
+        interaction.tap_cmd(query="Welcome")
+        mock_exec.assert_any_call(["idb", "ui", "tap", "50.0", "50.0"])
+
 if __name__ == "__main__":
     unittest.main()
