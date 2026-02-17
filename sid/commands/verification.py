@@ -1,9 +1,28 @@
 import sys
 import os
+import time
 from sid.utils.executor import execute_command
 from sid.utils.ui import find_element
 
 STATE_FILE = "/tmp/sid_last_bundle_id"
+
+def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible"):
+    """Waits for an element to reach a certain state."""
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        el = find_element(query)
+        if state == "visible" or state == "exists":
+            if el:
+                print(f"PASS: Element '{query}' is {state}.")
+                return
+        elif state == "hidden":
+            if not el:
+                print(f"PASS: Element '{query}' is hidden.")
+                return
+        time.sleep(0.5)
+    
+    print(f"FAIL: ERR_TIMEOUT: Timeout waiting {timeout}s for '{query}' to be {state}.")
+    sys.exit(1)
 
 def assert_cmd(query: str, state: str):
     el = find_element(query)

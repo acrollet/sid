@@ -202,5 +202,24 @@ class TestCommands(unittest.TestCase):
         self.assertTrue(mock_install.called)
         self.assertIn("✅ idb found at: /path/to/idb", output)
 
+    @patch('sid.utils.ui.get_ui_tree')
+    def test_wait_success(self, mock_get_tree):
+        # Element found on second try
+        mock_data = [
+            {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login"}
+        ]
+        mock_get_tree.side_effect = [[], mock_data]
+        
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        with patch('time.sleep'): # Don't actually sleep
+            try:
+                verification.wait_cmd("btn1", timeout=5.0)
+            finally:
+                sys.stdout = sys.__stdout__
+
+        output = captured_output.getvalue()
+        self.assertIn("PASS: Element 'btn1' is visible.", output)
+
 if __name__ == "__main__":
     unittest.main()

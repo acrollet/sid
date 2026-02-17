@@ -3,7 +3,7 @@ import sys
 from sid.commands.vision import inspect_cmd, screenshot_cmd
 from sid.commands.interaction import tap_cmd, type_cmd, scroll_cmd, gesture_cmd
 from sid.commands.system import launch_cmd, open_cmd, permission_cmd, location_cmd, network_cmd
-from sid.commands.verification import assert_cmd, logs_cmd, tree_cmd
+from sid.commands.verification import assert_cmd, logs_cmd, tree_cmd, wait_cmd
 from sid.commands.doctor import doctor_cmd
 
 def main():
@@ -15,7 +15,7 @@ Vision:
   screenshot        Capture the visual state for verification.
 
 Interaction:
-  tap               Tap a UI element.
+  tap               Tap a UI element (by label or X Y coordinates).
   type              Input text into the currently focused field.
   scroll            Scroll the screen.
   gesture           Perform a specific gesture.
@@ -29,6 +29,7 @@ System:
 
 Verification:
   assert            Perform a quick boolean check on the UI state.
+  wait              Wait for an element to appear or disappear.
   logs              Fetch the tail of the system log for the target app.
   tree              List files in the app's sandbox containers.
 
@@ -67,7 +68,7 @@ Examples:
 
     # Interaction
     tap_parser = subparsers.add_parser("tap", help="Tap a UI element.")
-    tap_parser.add_argument("query", nargs="?", help="The accessibility identifier or label text to match (fuzzy match).")
+    tap_parser.add_argument("args", nargs="*", help="The accessibility identifier, label text, or X Y coordinates.")
     tap_parser.add_argument("--x", type=int, help="Fallback X coordinate if query fails or is not provided.")
     tap_parser.add_argument("--y", type=int, help="Fallback Y coordinate if query fails or is not provided.")
 
@@ -109,6 +110,11 @@ Examples:
     assert_parser.add_argument("query", help="The element identifier or label to check.")
     assert_parser.add_argument("state", help="The expected state: 'exists', 'visible', 'hidden', or 'text=value'.")
 
+    wait_parser = subparsers.add_parser("wait", help="Wait for an element to reach a certain state.")
+    wait_parser.add_argument("query", help="The element identifier or label to wait for.")
+    wait_parser.add_argument("--state", choices=["exists", "visible", "hidden"], default="visible", help="The state to wait for. Default: visible")
+    wait_parser.add_argument("--timeout", type=float, default=10.0, help="Maximum time to wait in seconds. Default: 10.0")
+
     logs_parser = subparsers.add_parser("logs", help="Fetch the tail of the system log for the target app.")
     logs_parser.add_argument("--crash-report", action="store_true", help="Check if a crash log was generated in the last session.")
 
@@ -130,7 +136,16 @@ Examples:
     elif args.command == "screenshot":
         screenshot_cmd(args.filename, mask_text=args.mask_text)
     elif args.command == "tap":
-        tap_cmd(query=args.query, x=args.x, y=args.y)
+        query = None
+        x, y = args.x, args.y
+        if len(args.args) == 2:
+            try:
+                x, y = int(args.args[0]), int(args.args[1])
+            except ValueError:
+                query = " ".join(args.args)
+        elif len(args.args) >= 1:
+            query = " ".join(args.args)
+        tap_cmd(query=query, x=x, y=y)
     elif args.command == "type":
         type_cmd(args.text, submit=args.submit)
     elif args.command == "scroll":
@@ -149,6 +164,8 @@ Examples:
         network_cmd(args.condition)
     elif args.command == "assert":
         assert_cmd(args.query, args.state)
+    elif args.command == "wait":
+        wait_cmd(args.query, timeout=args.timeout, state=args.state)
     elif args.command == "logs":
         logs_cmd(crash_report=args.crash_report)
     elif args.command == "tree":
