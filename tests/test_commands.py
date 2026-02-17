@@ -234,5 +234,24 @@ class TestCommands(unittest.TestCase):
         interaction.tap_cmd(query="Welcome")
         mock_exec.assert_any_call(["idb", "ui", "tap", "50.0", "50.0"])
 
+    @patch('sid.commands.system.execute_command')
+    @patch('os.path.exists', return_value=True)
+    @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.test.app")
+    def test_stop(self, mock_file, mock_exists, mock_exec):
+        system.stop_cmd()
+        # Verify terminate call
+        mock_exec.assert_any_call(["xcrun", "simctl", "terminate", "booted", "com.test.app"])
+
+    @patch('sid.commands.system.execute_command')
+    @patch('os.path.exists', return_value=True)
+    @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.test.app")
+    def test_relaunch(self, mock_file, mock_exists, mock_exec):
+        system.relaunch_cmd(clean=True)
+        # Verify stop (terminate)
+        mock_exec.assert_any_call(["xcrun", "simctl", "terminate", "booted", "com.test.app"])
+        # Verify launch
+        expected_launch = ["xcrun", "simctl", "launch", "booted", "com.test.app"]
+        mock_exec.assert_any_call(expected_launch)
+
 if __name__ == "__main__":
     unittest.main()

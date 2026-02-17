@@ -2,7 +2,7 @@ import argparse
 import sys
 from sid.commands.vision import inspect_cmd, screenshot_cmd
 from sid.commands.interaction import tap_cmd, type_cmd, scroll_cmd, gesture_cmd
-from sid.commands.system import launch_cmd, open_cmd, permission_cmd, location_cmd, network_cmd
+from sid.commands.system import launch_cmd, stop_cmd, relaunch_cmd, open_cmd, permission_cmd, location_cmd, network_cmd
 from sid.commands.verification import assert_cmd, logs_cmd, tree_cmd, wait_cmd
 from sid.commands.doctor import doctor_cmd
 
@@ -22,6 +22,8 @@ Interaction:
 
 System:
   launch            Launch an application.
+  stop              Terminate a running application.
+  relaunch          Stop and then start an application.
   open              Open a URL scheme or Universal Link.
   permission        Manage TCC (Privacy) permissions.
   location          Simulate GPS coordinates.
@@ -86,10 +88,19 @@ Examples:
 
     # System
     launch_parser = subparsers.add_parser("launch", help="Launch an application.")
-    launch_parser.add_argument("bundle_id", help="The Bundle ID of the app to launch (e.g., com.example.app).")
+    launch_parser.add_argument("bundle_id", nargs="?", help="The Bundle ID of the app to launch (e.g., com.example.app).")
     launch_parser.add_argument("--clean", action="store_true", help="Wipe the app container before launching to simulate a fresh install.")
     launch_parser.add_argument("--args", help="Launch arguments to pass to the app (e.g., '-TakingScreenshots YES').")
     launch_parser.add_argument("--locale", help="Launch the app in a specific language/locale (e.g., es-MX).")
+
+    stop_parser = subparsers.add_parser("stop", help="Terminate a running application.")
+    stop_parser.add_argument("bundle_id", nargs="?", help="The Bundle ID of the app to stop. Uses last launched app if omitted.")
+
+    relaunch_parser = subparsers.add_parser("relaunch", help="Stop and then start an application.")
+    relaunch_parser.add_argument("bundle_id", nargs="?", help="The Bundle ID of the app to relaunch. Uses last launched app if omitted.")
+    relaunch_parser.add_argument("--clean", action="store_true", help="Wipe the app container before launching.")
+    relaunch_parser.add_argument("--args", help="Launch arguments to pass to the app.")
+    relaunch_parser.add_argument("--locale", help="Launch the app in a specific language/locale.")
 
     open_parser = subparsers.add_parser("open", help="Open a URL scheme or Universal Link.")
     open_parser.add_argument("url", help="The URL to open (e.g., myapp://settings).")
@@ -154,6 +165,10 @@ Examples:
         gesture_cmd(args.type, args.args)
     elif args.command == "launch":
         launch_cmd(args.bundle_id, clean=args.clean, args=args.args, locale=args.locale)
+    elif args.command == "stop":
+        stop_cmd(args.bundle_id)
+    elif args.command == "relaunch":
+        relaunch_cmd(args.bundle_id, clean=args.clean, args=args.args, locale=args.locale)
     elif args.command == "open":
         open_cmd(args.url)
     elif args.command == "permission":

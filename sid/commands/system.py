@@ -13,9 +13,17 @@ def _get_app_container(bundle_id):
         return None
 
 def launch_cmd(bundle_id: str, clean: bool = False, args: str = None, locale: str = None):
-    # Store bundle_id immediately or after success?
-    # If launch fails, we might still want to target it for permission?
-    # Better on success.
+    if not bundle_id:
+        if os.path.exists(STATE_FILE):
+            try:
+                with open(STATE_FILE, "r") as f:
+                    bundle_id = f.read().strip()
+            except IOError:
+                pass
+    
+    if not bundle_id:
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first or provide a bundle ID.", file=sys.stderr)
+        return
 
     if clean:
         print(f"Terminating and cleaning {bundle_id}...")
@@ -49,6 +57,41 @@ def launch_cmd(bundle_id: str, clean: bool = False, args: str = None, locale: st
             pass # Ignore if can't write state
     except Exception as e:
         print(f"Error launching app: {e}", file=sys.stderr)
+
+def stop_cmd(bundle_id: str = None):
+    if not bundle_id:
+        if os.path.exists(STATE_FILE):
+            try:
+                with open(STATE_FILE, "r") as f:
+                    bundle_id = f.read().strip()
+            except IOError:
+                pass
+    
+    if not bundle_id:
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first or provide a bundle ID.", file=sys.stderr)
+        return
+
+    try:
+        execute_command(["xcrun", "simctl", "terminate", "booted", bundle_id])
+        print(f"Stopped {bundle_id}")
+    except Exception as e:
+        print(f"Error stopping app: {e}", file=sys.stderr)
+
+def relaunch_cmd(bundle_id: str = None, clean: bool = False, args: str = None, locale: str = None):
+    if not bundle_id:
+        if os.path.exists(STATE_FILE):
+            try:
+                with open(STATE_FILE, "r") as f:
+                    bundle_id = f.read().strip()
+            except IOError:
+                pass
+    
+    if not bundle_id:
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first or provide a bundle ID.", file=sys.stderr)
+        return
+
+    stop_cmd(bundle_id)
+    launch_cmd(bundle_id, clean=clean, args=args, locale=locale)
 
 def open_cmd(url: str):
     try:
