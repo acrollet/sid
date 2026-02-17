@@ -1,5 +1,6 @@
 import sys
 import json
+import subprocess
 from sid.utils.executor import execute_command
 
 def flatten_tree(nodes):
@@ -12,7 +13,7 @@ def flatten_tree(nodes):
             flat_list.extend(flatten_tree(node["nodes"]))
     return flat_list
 
-def get_ui_tree():
+def get_ui_tree(silent=False):
     try:
         output = execute_command(["idb", "ui", "describe-all"], capture_output=True)
         if not output:
@@ -22,12 +23,20 @@ def get_ui_tree():
             return flatten_tree(tree)
         except json.JSONDecodeError:
             return []
+    except subprocess.CalledProcessError as e:
+        if not silent:
+            msg = f"Error fetching UI tree (exit {e.returncode})"
+            if e.stderr:
+                msg += f": {e.stderr.strip()}"
+            print(msg, file=sys.stderr)
+        return []
     except Exception as e:
-        print(f"Error fetching UI tree: {e}", file=sys.stderr)
+        if not silent:
+            print(f"Error fetching UI tree: {e}", file=sys.stderr)
         return []
 
-def find_element(query: str):
-    elements = get_ui_tree()
+def find_element(query: str, silent=False):
+    elements = get_ui_tree(silent=silent)
     if not elements:
         return None
     # 1. Exact Match: Accessibility Identifier

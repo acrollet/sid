@@ -89,7 +89,7 @@ def scroll_cmd(direction: str, until_visible: str = None):
     if until_visible:
         max_retries = 10
         # Check first before scrolling
-        if find_element(until_visible):
+        if find_element(until_visible, silent=True):
             print(f"Element '{until_visible}' found.")
             return
 
@@ -97,10 +97,10 @@ def scroll_cmd(direction: str, until_visible: str = None):
             print(f"Element '{until_visible}' not found. Scrolling {direction} ({i+1}/{max_retries})...")
             perform_scroll()
             time.sleep(1.0) # Wait for animation
-            if find_element(until_visible):
+            if find_element(until_visible, silent=True):
                 print(f"Element '{until_visible}' found.")
                 return
-        print(f"Element '{until_visible}' not found after scrolling.", file=sys.stderr)
+        print(f"FAIL: ERR_ELEMENT_NOT_FOUND: Element '{until_visible}' not found after scrolling.", file=sys.stderr)
     else:
         perform_scroll()
         print(f"Scrolled {direction}")

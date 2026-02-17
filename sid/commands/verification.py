@@ -10,7 +10,7 @@ def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible"):
     """Waits for an element to reach a certain state."""
     start_time = time.time()
     while time.time() - start_time < timeout:
-        el = find_element(query)
+        el = find_element(query, silent=True)
         if state == "visible" or state == "exists":
             if el:
                 print(f"PASS: Element '{query}' is {state}.")
