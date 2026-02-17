@@ -13,8 +13,39 @@ def flatten_tree(nodes):
             flat_list.extend(flatten_tree(node["nodes"]))
     return flat_list
 
+def ensure_idb_connected(silent=False):
+    """Ensures idb is connected to the booted simulator."""
+    try:
+        targets = execute_command(["idb", "list-targets"], capture_output=True)
+        if not targets:
+            return False
+            
+        booted_udid = None
+        needs_connect = False
+        
+        for line in targets.split("\n"):
+            if "booted" in line.lower():
+                parts = line.split("|")
+                if len(parts) >= 2:
+                    booted_udid = parts[1].strip()
+                    if "no companion connected" in line.lower():
+                        needs_connect = True
+                    break
+        
+        if needs_connect and booted_udid:
+            if not silent:
+                print(f"Connecting idb companion to booted simulator ({booted_udid})...", file=sys.stderr)
+            execute_command(["idb", "connect", booted_udid], capture_output=True)
+            return True
+        return booted_udid is not None
+    except Exception as e:
+        if not silent:
+            print(f"Warning: Failed to ensure idb connection: {e}", file=sys.stderr)
+        return False
+
 def get_ui_tree(silent=False):
     try:
+        ensure_idb_connected(silent=silent)
         output = execute_command(["idb", "ui", "describe-all"], capture_output=True)
         if not output:
             return []
