@@ -13,9 +13,9 @@ def tap_cmd(query: str = None, x: int = None, y: int = None):
             if center:
                 target_x, target_y = center
             else:
-                print(f"Could not determine center for element '{query}'", file=sys.stderr)
+                print(f"ERR_COORDINATES_NOT_FOUND: Could not determine center for element '{query}'", file=sys.stderr)
         else:
-             print(f"Element '{query}' not found.", file=sys.stderr)
+             print(f"ERR_ELEMENT_NOT_FOUND: Element '{query}' not found.", file=sys.stderr)
 
     # Fallback to coordinates if query failed or not provided
     if target_x is None and x is not None and y is not None:
@@ -42,22 +42,25 @@ def type_cmd(text: str, submit: bool = False):
         print(f"Error typing: {e}", file=sys.stderr)
 
 def scroll_cmd(direction: str, until_visible: str = None):
-    # Map direction to swipe coordinates
-    w, h = 375, 812 # Default fallback
-
     # Try to get screen dimensions from inspect
     tree = get_ui_tree()
+    w, h = None, None
     if tree:
         for el in tree:
             if el.get("role") == "Window":
                 f = el.get("frame", {})
                 if isinstance(f, dict):
                     try:
-                        w = float(f.get("w", w))
-                        h = float(f.get("h", h))
+                        w = float(f.get("w", w or 375))
+                        h = float(f.get("h", h or 812))
                     except (ValueError, TypeError):
                         pass
-                break
+                if w and h:
+                    break
+    
+    # Fallback if no window found or dimensions missing
+    w = w or 375
+    h = h or 812
 
     cx, cy = w / 2, h / 2
     swipe_len = h * 0.4

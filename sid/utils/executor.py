@@ -30,6 +30,16 @@ def execute_command(command: list[str], check: bool = True, capture_output: bool
     Returns:
         The standard output of the command if capture_output is True.
     """
+    import shutil
+    import os
+    import sys
+
+    # If the executable is not in PATH, try to find it in the same directory as the current python
+    if command and not shutil.which(command[0]):
+        local_bin = os.path.join(os.path.dirname(sys.executable), command[0])
+        if os.path.exists(local_bin):
+            command = [local_bin] + command[1:]
+
     cmd_str = " ".join(shlex.quote(arg) for arg in command)
 
     if _DRY_RUN:

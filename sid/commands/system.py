@@ -67,7 +67,7 @@ def permission_cmd(service: str, status: str):
             pass
 
     if not bundle_id:
-        print("Error: Could not determine target app. Run 'sid launch' first.", file=sys.stderr)
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first.", file=sys.stderr)
         return
 
     try:

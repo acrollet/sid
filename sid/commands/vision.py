@@ -10,6 +10,37 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None):
     try:
         elements = get_ui_tree()
 
+        # Try to detect app and screen
+        detected_bundle = "unknown"
+        detected_screen = "unknown"
+
+        # In idb's output, the top-level window often has the bundle_id in its metadata 
+        # or we can look for the 'Window' role.
+        for el in elements:
+            role = el.get("role", "")
+            if role in ["Window", "AXWindow", "AXApplication"]:
+                # Some idb versions provide bundle_id in the window node or we can infer it
+                # For now, we'll see if AXIdentifier or AXLabel on Window gives us a screen name
+                detected_screen = el.get("AXLabel") or el.get("AXIdentifier") or "MainScreen"
+                break
+        
+        if detected_screen == "unknown":
+             # Try to find a heading as a fallback
+             for el in elements:
+                  if el.get("role") in ["Heading", "AXHeading"]:
+                       detected_screen = el.get("AXLabel") or "MainScreen"
+                       break
+
+        # If we have a state file, use that as a fallback/source for bundle_id
+        from sid.commands.verification import STATE_FILE
+        import os
+        if os.path.exists(STATE_FILE):
+            try:
+                with open(STATE_FILE, "r") as f:
+                    detected_bundle = f.read().strip()
+            except IOError:
+                pass
+
         filtered_elements = []
         for el in elements:
             # type/role
@@ -17,9 +48,12 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None):
 
             if interactive_only:
                 # Spec list: Button, TextField, Cell, Switch, StaticText
-                # We should be case-insensitive just in case
-                valid_roles = ["Button", "TextField", "Cell", "Switch", "StaticText"]
-                if role not in valid_roles:
+                # We should be case-insensitive and handle AX prefixes
+                valid_roles = [
+                    "button", "textfield", "cell", "switch", "statictext", "link", "image", "searchfield",
+                    "axbutton", "axtextfield", "axcell", "axswitch", "axstatictext", "axlink", "aximage", "axsearchfield"
+                ]
+                if role.lower() not in valid_roles:
                      continue
 
             # Helper to format frame
@@ -40,10 +74,9 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None):
             filtered_elements.append(mapped)
 
         # Attempt to get running app
-        # We can leave app/screen_id as placeholder as getting them reliably requires more logic
         result = {
-            "app": "com.example.myapp",
-            "screen_id": "unknown_screen",
+            "app": detected_bundle,
+            "screen_id": detected_screen,
             "elements": filtered_elements
         }
 

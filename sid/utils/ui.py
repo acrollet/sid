@@ -2,13 +2,24 @@ import sys
 import json
 from sid.utils.executor import execute_command
 
+def flatten_tree(nodes):
+    flat_list = []
+    if not isinstance(nodes, list):
+        return flat_list
+    for node in nodes:
+        flat_list.append(node)
+        if "nodes" in node:
+            flat_list.extend(flatten_tree(node["nodes"]))
+    return flat_list
+
 def get_ui_tree():
     try:
         output = execute_command(["idb", "ui", "describe-all"], capture_output=True)
         if not output:
             return []
         try:
-            return json.loads(output)
+            tree = json.loads(output)
+            return flatten_tree(tree)
         except json.JSONDecodeError:
             return []
     except Exception as e:

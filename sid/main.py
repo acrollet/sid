@@ -4,20 +4,55 @@ from sid.commands.vision import inspect_cmd, screenshot_cmd
 from sid.commands.interaction import tap_cmd, type_cmd, scroll_cmd, gesture_cmd
 from sid.commands.system import launch_cmd, open_cmd, permission_cmd, location_cmd, network_cmd
 from sid.commands.verification import assert_cmd, logs_cmd, tree_cmd
+from sid.commands.doctor import doctor_cmd
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Sid: A Token-Efficient CLI for iOS Automation",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print("Sid: A CLI for iOS Automation")
+        print("""
+Vision:
+  inspect           Inspect UI hierarchy and return a simplified JSON tree.
+  screenshot        Capture the visual state for verification.
+
+Interaction:
+  tap               Tap a UI element.
+  type              Input text into the currently focused field.
+  scroll            Scroll the screen.
+  gesture           Perform a specific gesture.
+
+System:
+  launch            Launch an application.
+  open              Open a URL scheme or Universal Link.
+  permission        Manage TCC (Privacy) permissions.
+  location          Simulate GPS coordinates.
+  network           Simulate network conditions (Not Supported).
+
+Verification:
+  assert            Perform a quick boolean check on the UI state.
+  logs              Fetch the tail of the system log for the target app.
+  tree              List files in the app's sandbox containers.
+
+Utils:
+  doctor            Check if all dependencies (idb, xcrun) are installed.
+
+Options:
+  -h, --help        Show this help message
+
 Examples:
-  sid launch com.myapp.beta --clean
-  sid inspect --interactive-only
-  sid tap "Log In"
-  sid type "user@example.com" --submit
-  sid assert "Welcome" visible
-"""
+  sid launch com.apple.Preferences --clean
+  sid inspect
+  sid tap "Settings"
+  sid assert "General" visible
+""")
+        sys.exit(0)
+
+    parser = argparse.ArgumentParser(
+        description="Sid: A CLI for iOS Automation",
+        usage="sid [command] [options]",
+        add_help=False
     )
+    parser.add_argument('-h', '--help', action='store_true')
+
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
     # Vision
@@ -80,7 +115,15 @@ Examples:
     tree_parser = subparsers.add_parser("tree", help="List files in the app's sandbox containers.")
     tree_parser.add_argument("directory", help="The directory to list: 'documents', 'caches', or 'tmp'.")
 
-    args = parser.parse_args()
+    subparsers.add_parser("doctor", help="Check if all dependencies are installed.")
+
+    try:
+        args = parser.parse_args()
+    except SystemExit:
+        if '-h' in sys.argv or '--help' in sys.argv:
+            # This shouldn't be reached if we exit early, but as a safety:
+            sys.exit(0)
+        raise
 
     if args.command == "inspect":
         inspect_cmd(interactive_only=args.interactive_only, depth=args.depth)
@@ -110,6 +153,8 @@ Examples:
         logs_cmd(crash_report=args.crash_report)
     elif args.command == "tree":
         tree_cmd(args.directory)
+    elif args.command == "doctor":
+        doctor_cmd()
 
 if __name__ == "__main__":
     main()
