@@ -2,7 +2,7 @@
 name = "sid"
 version = "0.1.0"
 description = "A Token-Efficient CLI for iOS Automation"
-readme = "SPEC.md"
+readme = "README.md"
 requires-python = ">=3.9"
 dependencies = []
 
