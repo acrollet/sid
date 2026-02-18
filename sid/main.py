@@ -7,54 +7,42 @@ from sid.commands.verification import assert_cmd, logs_cmd, tree_cmd, wait_cmd
 from sid.commands.doctor import doctor_cmd
 
 def main():
-    if "-h" in sys.argv or "--help" in sys.argv:
-        print("Sid: A CLI for iOS Automation")
-        print("""
+    DESCRIPTION = """\
+Sid: A Token-Efficient CLI for iOS Automation
+
 Vision:
-  inspect           Inspect UI hierarchy and return a simplified JSON tree.
-  screenshot        Capture the visual state for verification.
+  inspect           Inspect UI hierarchy and return a simplified JSON tree
+  screenshot        Capture the visual state for verification
 
 Interaction:
-  tap               Tap a UI element (by label or X Y coordinates).
-  type              Input text into the currently focused field.
-  scroll            Scroll the screen.
-  gesture           Perform a specific gesture.
+  tap               Tap a UI element (by label or X Y coordinates)
+  type              Input text into the currently focused field
+  scroll            Scroll the screen
+  gesture           Perform a specific gesture
 
 System:
-  launch            Launch an application.
-  stop              Terminate a running application.
-  relaunch          Stop and then start an application.
-  open              Open a URL scheme or Universal Link.
-  permission        Manage TCC (Privacy) permissions.
-  location          Simulate GPS coordinates.
-  network           Simulate network conditions (Not Supported).
+  launch            Launch an application
+  stop              Terminate a running application
+  relaunch          Stop and then start an application
+  open              Open a URL scheme or Universal Link
+  permission        Manage TCC (Privacy) permissions
+  location          Simulate GPS coordinates
 
 Verification:
-  assert            Perform a quick boolean check on the UI state.
-  wait              Wait for an element to appear or disappear.
-  logs              Fetch the tail of the system log for the target app.
-  tree              List files in the app's sandbox containers.
+  assert            Perform a quick boolean check on the UI state
+  wait              Wait for an element to appear or disappear
+  logs              Fetch the tail of the system log for the target app
+  tree              List files in the app's sandbox containers
 
 Utils:
-  doctor            Check if all dependencies (idb, xcrun) are installed.
-
-Options:
-  -h, --help        Show this help message
-
-Examples:
-  sid launch com.apple.Preferences --clean
-  sid inspect
-  sid tap "Settings"
-  sid assert "General" visible
-""")
-        sys.exit(0)
+  doctor            Check if all dependencies are installed
+"""
 
     parser = argparse.ArgumentParser(
-        description="Sid: A CLI for iOS Automation",
+        description=DESCRIPTION,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         usage="sid [command] [options]",
-        add_help=False
     )
-    parser.add_argument('-h', '--help', action='store_true')
 
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
@@ -134,13 +122,7 @@ Examples:
 
     subparsers.add_parser("doctor", help="Check if all dependencies are installed.")
 
-    try:
-        args = parser.parse_args()
-    except SystemExit:
-        if '-h' in sys.argv or '--help' in sys.argv:
-            # This shouldn't be reached if we exit early, but as a safety:
-            sys.exit(0)
-        raise
+    args = parser.parse_args()
 
     if args.command == "inspect":
         inspect_cmd(interactive_only=args.interactive_only, depth=args.depth)
