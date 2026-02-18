@@ -63,6 +63,7 @@ Examples:
     inspect_parser.add_argument("--interactive-only", action="store_true", default=True, help="Filter out structural containers and keep actionable elements (Button, TextField, Cell, Switch, StaticText). Default: True")
     inspect_parser.add_argument("--all", action="store_false", dest="interactive_only", help="Show all elements, disabling the interactive-only filter.")
     inspect_parser.add_argument("--depth", type=int, help="Limit the hierarchy depth to save tokens. (Note: Partial support)")
+    inspect_parser.add_argument("--flat", action="store_true", help="Return a flat list of elements instead of a hierarchy. (Backward compatibility)")
 
     screenshot_parser = subparsers.add_parser("screenshot", help="Capture the visual state for verification.")
     screenshot_parser.add_argument("filename", help="The output filename for the screenshot (e.g., screen.png).")
@@ -143,7 +144,7 @@ Examples:
         raise
 
     if args.command == "inspect":
-        inspect_cmd(interactive_only=args.interactive_only, depth=args.depth)
+        inspect_cmd(interactive_only=args.interactive_only, depth=args.depth, flat=args.flat)
     elif args.command == "screenshot":
         screenshot_cmd(args.filename, mask_text=args.mask_text)
     elif args.command == "tap":

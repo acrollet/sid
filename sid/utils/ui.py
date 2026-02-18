@@ -43,6 +43,29 @@ def ensure_idb_connected(silent=False):
             print(f"Warning: Failed to ensure idb connection: {e}", file=sys.stderr)
         return False
 
+def get_ui_tree_hierarchical(silent=False):
+    """Returns the raw nested tree from idb, with each node's children intact."""
+    try:
+        ensure_idb_connected(silent=silent)
+        output = execute_command(["idb", "ui", "describe-all"], capture_output=True)
+        if not output:
+            return []
+        try:
+            return json.loads(output)  # Return as-is, preserving nesting
+        except json.JSONDecodeError:
+            return []
+    except subprocess.CalledProcessError as e:
+        if not silent:
+            msg = f"Error fetching UI tree (exit {e.returncode})"
+            if e.stderr:
+                msg += f": {e.stderr.strip()}"
+            print(msg, file=sys.stderr)
+        return []
+    except Exception as e:
+        if not silent:
+            print(f"Error fetching UI tree: {e}", file=sys.stderr)
+        return []
+
 def get_ui_tree(silent=False):
     try:
         ensure_idb_connected(silent=silent)

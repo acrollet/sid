@@ -25,14 +25,32 @@
 Returns a simplified JSON tree of the current screen's accessibility hierarchy.
 * **Flag:** `--interactive-only` (Default: `true`). Filters out structural containers (`Window`, `Other`) and keeps actionable elements (`Button`, `TextField`, `Cell`, `Switch`, `StaticText`).
 * **Flag:** `--depth [n]`. Limits the hierarchy depth to save tokens.
-* **Output Schema:**
+* **Flag:** `--flat`. Return a flat list of elements instead of a hierarchy (Backward Compatibility).
+* **Output Schema (Hierarchical):**
     ```json
     {
       "app": "com.example.myapp",
       "screen_id": "LoginView",
       "elements": [
-        { "id": "email_field", "label": "Email Address", "type": "TextField", "frame": "20,100,300,40", "value": "" },
-        { "id": "login_btn", "label": "Log In", "type": "Button", "enabled": false }
+        {
+          "type": "NavigationBar",
+          "children": [
+            { "type": "Button", "label": "Back" }
+          ]
+        },
+        {
+          "type": "TextField",
+          "id": "email_field",
+          "label": "Email Address",
+          "value": "",
+          "frame": "20,100,300,40"
+        },
+        {
+          "type": "Button",
+          "id": "login_btn",
+          "label": "Log In",
+          "enabled": false
+        }
       ]
     }
     ```
