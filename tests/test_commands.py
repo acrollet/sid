@@ -121,11 +121,13 @@ class TestCommands(unittest.TestCase):
         output = captured_output.getvalue()
         self.assertIn("ERR_ELEMENT_NOT_FOUND", output)
 
+    @patch('os.path.expanduser')
     @patch('os.path.exists')
     @patch('os.listdir')
     @patch('os.path.getmtime')
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="Crash content")
-    def test_logs_crash_report(self, mock_file, mock_mtime, mock_listdir, mock_exists):
+    def test_logs_crash_report(self, mock_file, mock_mtime, mock_listdir, mock_exists, mock_expanduser):
+        mock_expanduser.return_value = "/Users/acrollet/Library/Logs/DiagnosticReports"
         # Mock STATE_FILE exists and contains bundle_id
         # We need to handle multiple open calls
         mock_exists.side_effect = lambda p: p == "/tmp/sid_last_bundle_id" or p == "/Users/acrollet/Library/Logs/DiagnosticReports"
