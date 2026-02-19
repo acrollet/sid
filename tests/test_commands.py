@@ -5,14 +5,14 @@ from unittest.mock import patch, MagicMock
 from io import StringIO
 
 # We need to import the modules to patch them
-import sid.commands.vision as vision
-import sid.commands.interaction as interaction
-import sid.commands.system as system
-import sid.commands.verification as verification
+import pippin.commands.vision as vision
+import pippin.commands.interaction as interaction
+import pippin.commands.system as system
+import pippin.commands.verification as verification
 
 class TestCommands(unittest.TestCase):
 
-    @patch('sid.commands.vision.get_ui_tree')
+    @patch('pippin.commands.vision.get_ui_tree')
     @patch('os.path.exists')
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.dynamic.app")
     def test_inspect_basic(self, mock_file, mock_exists, mock_get_tree):
@@ -38,8 +38,8 @@ class TestCommands(unittest.TestCase):
         self.assertIn('"type": "Button"', output)
         self.assertNotIn('"type": "Window"', output) # Interactive only filters window
 
-    @patch('sid.utils.ui.get_ui_tree') # Patch where find_element looks it up
-    @patch('sid.commands.interaction.execute_command')
+    @patch('pippin.utils.ui.get_ui_tree') # Patch where find_element looks it up
+    @patch('pippin.commands.interaction.execute_command')
     def test_tap_with_query(self, mock_exec, mock_get_tree):
         # Mock tree
         mock_data = [
@@ -52,7 +52,7 @@ class TestCommands(unittest.TestCase):
         # Expect tap call with center: 10+50=60, 20+25=45
         mock_exec.assert_any_call(["idb", "ui", "tap", "60.0", "45.0"])
 
-    @patch('sid.commands.system.execute_command')
+    @patch('pippin.commands.system.execute_command')
     def test_launch(self, mock_exec):
         system.launch_cmd("com.test.app", clean=True, args="-flag val", locale="en_US")
 
@@ -63,8 +63,8 @@ class TestCommands(unittest.TestCase):
         expected_launch = ["xcrun", "simctl", "launch", "booted", "com.test.app", "-AppleLanguages", "(en_US)", "-AppleLocale", "en_US", "-flag", "val"]
         mock_exec.assert_any_call(expected_launch)
 
-    @patch('sid.commands.verification.execute_command')
-    @patch('sid.utils.ui.get_ui_tree')
+    @patch('pippin.commands.verification.execute_command')
+    @patch('pippin.utils.ui.get_ui_tree')
     def test_assert_exists(self, mock_get_tree, mock_exec):
         mock_data = [
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login"}
@@ -81,7 +81,7 @@ class TestCommands(unittest.TestCase):
         output = captured_output.getvalue().strip()
         self.assertEqual(output, "PASS")
 
-    @patch('sid.commands.interaction.get_ui_tree')
+    @patch('pippin.commands.interaction.get_ui_tree')
     def test_scroll_dynamic_dimensions(self, mock_get_tree):
         # Mock a large window (e.g. iPad)
         mock_data = [
@@ -89,7 +89,7 @@ class TestCommands(unittest.TestCase):
         ]
         mock_get_tree.return_value = mock_data
 
-        with patch('sid.commands.interaction.execute_command') as mock_exec:
+        with patch('pippin.commands.interaction.execute_command') as mock_exec:
             interaction.scroll_cmd("down")
             
             # Get the actual call arguments
@@ -107,7 +107,7 @@ class TestCommands(unittest.TestCase):
             self.assertAlmostEqual(float(cmd[5]), 512.0)
             self.assertAlmostEqual(float(cmd[6]), 409.8)
 
-    @patch('sid.utils.ui.get_ui_tree')
+    @patch('pippin.utils.ui.get_ui_tree')
     def test_tap_error_code(self, mock_get_tree):
         mock_get_tree.return_value = [] # No elements
         
@@ -128,7 +128,7 @@ class TestCommands(unittest.TestCase):
     def test_logs_crash_report(self, mock_file, mock_mtime, mock_listdir, mock_exists):
         # Mock STATE_FILE exists and contains bundle_id
         # We need to handle multiple open calls
-        mock_exists.side_effect = lambda p: p == "/tmp/sid_last_bundle_id" or p == "/Users/acrollet/Library/Logs/DiagnosticReports"
+        mock_exists.side_effect = lambda p: p == "/tmp/pippin_last_bundle_id" or p == "/Users/acrollet/Library/Logs/DiagnosticReports"
         
         # First call to open is for STATE_FILE
         # Second call is for the crash report
@@ -151,7 +151,7 @@ class TestCommands(unittest.TestCase):
         self.assertIn("CRASH_REPORT_FOUND", output)
         self.assertIn("Stack trace line 1", output)
 
-    @patch('sid.commands.doctor.execute_command')
+    @patch('pippin.commands.doctor.execute_command')
     @patch('shutil.which')
     @patch('builtins.input', return_value='n')
     def test_doctor_fail_no_install(self, mock_input, mock_which, mock_exec):
@@ -162,7 +162,7 @@ class TestCommands(unittest.TestCase):
         sys.stdout = captured_stdout
         try:
             with self.assertRaises(SystemExit):
-                from sid.commands.doctor import doctor_cmd
+                from pippin.commands.doctor import doctor_cmd
                 doctor_cmd()
         finally:
             sys.stdout = sys.__stdout__
@@ -174,10 +174,10 @@ class TestCommands(unittest.TestCase):
         self.assertIn("❌ idb NOT FOUND", output)
         self.assertIn("⚠️  Some dependencies are missing or misconfigured.", output)
 
-    @patch('sid.commands.doctor.execute_command')
+    @patch('pippin.commands.doctor.execute_command')
     @patch('shutil.which')
     @patch('builtins.input', return_value='y')
-    @patch('sid.commands.doctor._install_idb', return_value=True)
+    @patch('pippin.commands.doctor._install_idb', return_value=True)
     def test_doctor_install_success(self, mock_install, mock_input, mock_which, mock_exec):
         # Simulate idb missing initially, then found after install
         mock_which.side_effect = ["/usr/bin/xcrun", None, "/path/to/idb"] # xcrun checked first? No, idb then xcrun
@@ -191,7 +191,7 @@ class TestCommands(unittest.TestCase):
         captured_stdout = StringIO()
         sys.stdout = captured_stdout
         try:
-            from sid.commands.doctor import doctor_cmd
+            from pippin.commands.doctor import doctor_cmd
             doctor_cmd()
         except SystemExit:
             pass 
@@ -202,7 +202,7 @@ class TestCommands(unittest.TestCase):
         self.assertTrue(mock_install.called)
         self.assertIn("✅ idb found at: /path/to/idb", output)
 
-    @patch('sid.utils.ui.get_ui_tree')
+    @patch('pippin.utils.ui.get_ui_tree')
     def test_wait_success(self, mock_get_tree):
         # Element found on second try
         mock_data = [
@@ -221,8 +221,8 @@ class TestCommands(unittest.TestCase):
         output = captured_output.getvalue()
         self.assertIn("PASS: Element 'btn1' is visible.", output)
 
-    @patch('sid.utils.ui.get_ui_tree')
-    @patch('sid.commands.interaction.execute_command')
+    @patch('pippin.utils.ui.get_ui_tree')
+    @patch('pippin.commands.interaction.execute_command')
     def test_tap_partial_label(self, mock_exec, mock_get_tree):
         # Mock tree with a long label
         mock_data = [
@@ -234,7 +234,7 @@ class TestCommands(unittest.TestCase):
         interaction.tap_cmd(query="Welcome")
         mock_exec.assert_any_call(["idb", "ui", "tap", "50.0", "50.0"])
 
-    @patch('sid.commands.system.execute_command')
+    @patch('pippin.commands.system.execute_command')
     @patch('os.path.exists', return_value=True)
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.test.app")
     def test_stop(self, mock_file, mock_exists, mock_exec):
@@ -242,7 +242,7 @@ class TestCommands(unittest.TestCase):
         # Verify terminate call
         mock_exec.assert_any_call(["xcrun", "simctl", "terminate", "booted", "com.test.app"])
 
-    @patch('sid.commands.system.execute_command')
+    @patch('pippin.commands.system.execute_command')
     @patch('os.path.exists', return_value=True)
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.test.app")
     def test_relaunch(self, mock_file, mock_exists, mock_exec):

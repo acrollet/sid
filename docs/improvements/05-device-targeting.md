@@ -2,7 +2,7 @@
 
 **Impact:** Medium — tool completely breaks with multiple simulators.
 **Effort:** Small
-**Files:** `sid/main.py`, `sid/utils/ui.py`, `sid/utils/device.py` (new)
+**Files:** `pippin/main.py`, `pippin/utils/ui.py`, `pippin/utils/device.py` (new)
 
 ## Problem
 
@@ -13,7 +13,7 @@ No udid provided and there are multiple companions to run against
 dict_keys(['61B8F683-...', 'BB13ECAA-...'])
 ```
 
-There's no `--udid` or `--device` flag anywhere in sid. The tool uses `"booted"` for `simctl` commands but `idb` needs explicit targeting when multiple companions are registered.
+There's no `--udid` or `--device` flag anywhere in pippin. The tool uses `"booted"` for `simctl` commands but `idb` needs explicit targeting when multiple companions are registered.
 
 ## Proposed Changes
 
@@ -25,16 +25,16 @@ In `main.py`, add a global argument before the subparsers:
 parser.add_argument(
     "--device",
     help="Target simulator UDID. Defaults to the booted simulator. "
-         "Use 'sid doctor' to list available devices.",
+         "Use 'pippin doctor' to list available devices.",
     default=None,
 )
 ```
 
-### 2. Create `sid/utils/device.py`
+### 2. Create `pippin/utils/device.py`
 
 ```python
 import json
-from sid.utils.executor import execute_command
+from pippin.utils.executor import execute_command
 
 _target_udid = None
 
@@ -84,7 +84,7 @@ def get_simctl_target():
 In `ui.py`, update `ensure_idb_connected()` and all `idb` calls to use the target UDID:
 
 ```python
-from sid.utils.device import get_target_udid
+from pippin.utils.device import get_target_udid
 
 def get_ui_tree(silent=False):
     udid = get_target_udid()
@@ -96,9 +96,9 @@ def get_ui_tree(silent=False):
 ### 4. Enhance `doctor` to list devices
 
 ```
-$ sid doctor
+$ pippin doctor
 
-Checking Sid dependencies...
+Checking Pippin dependencies...
 ✅ idb found
 ✅ xcrun found
 
@@ -106,10 +106,10 @@ Simulators:
   BB13ECAA-...  iPhone 16 Pro    iOS 18.2  Booted  ← active
   61B8F683-...  iPhone 15        iOS 17.5  Booted
 
-✨ Sid is ready. Using: iPhone 16 Pro (BB13ECAA-...)
+✨ Pippin is ready. Using: iPhone 16 Pro (BB13ECAA-...)
 ```
 
-This helps the user (and AI) discover available devices and understand which one sid will target.
+This helps the user (and AI) discover available devices and understand which one pippin will target.
 
 ### 5. Wire it up in `main.py`
 
@@ -117,7 +117,7 @@ This helps the user (and AI) discover available devices and understand which one
 args = parser.parse_args()
 
 if args.device:
-    from sid.utils.device import set_target_device
+    from pippin.utils.device import set_target_device
     set_target_device(args.device)
 
 # ... dispatch to command
@@ -125,11 +125,11 @@ if args.device:
 
 ## Environment Variable Fallback
 
-Also support `SID_DEVICE_UDID` env var so users can set it once per terminal session:
+Also support `PIPPIN_DEVICE_UDID` env var so users can set it once per terminal session:
 
 ```bash
-export SID_DEVICE_UDID=BB13ECAA-05F4-4E3B-A220-235BDBADFAB5
-sid inspect  # uses that device
+export PIPPIN_DEVICE_UDID=BB13ECAA-05F4-4E3B-A220-235BDBADFAB5
+pippin inspect  # uses that device
 ```
 
 ## Testing

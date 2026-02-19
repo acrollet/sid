@@ -2,7 +2,7 @@ import shutil
 import sys
 import os
 import subprocess
-from sid.utils.executor import execute_command
+from pippin.utils.executor import execute_command
 
 def _install_idb():
     print("\nAttempting to install idb dependencies...")
@@ -41,7 +41,7 @@ def _install_idb():
         return False
 
 def doctor_cmd():
-    print("Checking Sid dependencies...\n")
+    print("Checking Pippin dependencies...\n")
     
     dependencies = {
         "idb": "Essential for UI inspection and advanced interactions.",
@@ -112,7 +112,7 @@ def doctor_cmd():
         all_passed = False
 
     if all_passed:
-        print("\n✨ Sid is ready to go!")
+        print("\n✨ Pippin is ready to go!")
     else:
         print("\n⚠️  Some dependencies are missing or misconfigured.")
         sys.exit(1)

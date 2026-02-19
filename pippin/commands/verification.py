@@ -1,10 +1,10 @@
 import sys
 import os
 import time
-from sid.utils.executor import execute_command
-from sid.utils.ui import find_element
+from pippin.utils.executor import execute_command
+from pippin.utils.ui import find_element
 
-STATE_FILE = "/tmp/sid_last_bundle_id"
+STATE_FILE = "/tmp/pippin_last_bundle_id"
 
 def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible"):
     """Waits for an element to reach a certain state."""
@@ -67,7 +67,7 @@ def logs_cmd(crash_report: bool = False):
             pass
 
     if not bundle_id:
-        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first.", file=sys.stderr)
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'pippin launch' first.", file=sys.stderr)
         return
 
     if crash_report:
@@ -133,7 +133,7 @@ def tree_cmd(directory: str):
             pass
 
     if not bundle_id:
-        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first.", file=sys.stderr)
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'pippin launch' first.", file=sys.stderr)
         return
 
     subpath = ""

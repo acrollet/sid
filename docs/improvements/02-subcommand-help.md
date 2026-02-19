@@ -2,7 +2,7 @@
 
 **Impact:** High — AI agents (and humans) cannot discover argument syntax.
 **Effort:** Small
-**Files:** `sid/main.py`
+**Files:** `pippin/main.py`
 
 ## Problem
 
@@ -10,12 +10,12 @@ Lines 10-50 of `main.py` intercept `-h` / `--help` before argparse processes the
 
 ```python
 if "-h" in sys.argv or "--help" in sys.argv:
-    print("Sid: A CLI for iOS Automation")
+    print("Pippin: A CLI for iOS Automation")
     print("""...""")
     sys.exit(0)
 ```
 
-This means `sid tap --help`, `sid inspect -h`, `sid launch --help` all print the same top-level overview. The per-subcommand parsers have detailed argument definitions (e.g., `--interactive-only`, `--depth`, `--submit`, `--until-visible`) but they're completely invisible.
+This means `pippin tap --help`, `pippin inspect -h`, `pippin launch --help` all print the same top-level overview. The per-subcommand parsers have detailed argument definitions (e.g., `--interactive-only`, `--depth`, `--submit`, `--until-visible`) but they're completely invisible.
 
 ## Proposed Fix
 
@@ -33,7 +33,7 @@ Remove the manual help interception entirely and let argparse handle it natively
 
 ```python
 DESCRIPTION = """\
-Sid: A Token-Efficient CLI for iOS Automation
+Pippin: A Token-Efficient CLI for iOS Automation
 
 Vision:
   inspect           Inspect UI hierarchy and return a simplified JSON tree
@@ -66,7 +66,7 @@ Utils:
 parser = argparse.ArgumentParser(
     description=DESCRIPTION,
     formatter_class=argparse.RawDescriptionHelpFormatter,
-    usage="sid [command] [options]",
+    usage="pippin [command] [options]",
 )
 ```
 
@@ -75,10 +75,10 @@ parser = argparse.ArgumentParser(
 After this change:
 
 ```
-$ sid --help          → Shows the grouped overview + global options
-$ sid tap --help      → Shows: "Tap a UI element" + args/flags for tap
-$ sid inspect --help  → Shows: --interactive-only, --all, --depth flags
-$ sid launch --help   → Shows: bundle_id, --clean, --args, --locale
+$ pippin --help          → Shows the grouped overview + global options
+$ pippin tap --help      → Shows: "Tap a UI element" + args/flags for tap
+$ pippin inspect --help  → Shows: --interactive-only, --all, --depth flags
+$ pippin launch --help   → Shows: bundle_id, --clean, --args, --locale
 ```
 
 ### Also fix the `except SystemExit` block
@@ -93,6 +93,6 @@ No try/except needed — argparse will print help and exit cleanly on its own.
 
 ## Testing
 
-- Verify `sid -h` still shows the grouped overview.
-- Verify `sid <subcommand> -h` shows per-subcommand args.
+- Verify `pippin -h` still shows the grouped overview.
+- Verify `pippin <subcommand> -h` shows per-subcommand args.
 - Verify that invalid arguments produce useful error messages (argparse does this by default).

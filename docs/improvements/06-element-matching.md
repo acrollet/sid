@@ -2,7 +2,7 @@
 
 **Impact:** Medium — reduces "tapped the wrong thing" failures.
 **Effort:** Medium
-**Files:** `sid/utils/ui.py`
+**Files:** `pippin/utils/ui.py`
 
 ## Problem
 
@@ -11,7 +11,7 @@
 1. **Exact match on AXIdentifier** — good, but many elements lack identifiers.
 2. **Substring match on AXLabel** — returns the *first* element containing the query.
 
-The substring match is fragile. `sid tap "General"` will match whichever of these comes first in the flat list:
+The substring match is fragile. `pippin tap "General"` will match whichever of these comes first in the flat list:
 - "General" (the cell we want)
 - "General Settings" (a different cell)
 - "In General, ..." (a description label)
@@ -73,8 +73,8 @@ def find_element(query: str, silent=False, strict=False):
 ### 2. Add `--strict` flag to `tap` and `assert`
 
 ```
-sid tap "General" --strict      # Only exact ID or exact label match
-sid tap "General"               # Current behavior (substring fallback)
+pippin tap "General" --strict      # Only exact ID or exact label match
+pippin tap "General"               # Current behavior (substring fallback)
 ```
 
 ### 3. Ambiguity reporting
@@ -94,8 +94,8 @@ The AI sees this warning on stderr and can decide whether to retry with a more s
 Allow `type:label` syntax to disambiguate:
 
 ```
-sid tap "Cell:General"           # Only match cells labeled "General"
-sid tap "Button:Cancel"          # Only match buttons labeled "Cancel"
+pippin tap "Cell:General"           # Only match cells labeled "General"
+pippin tap "Button:Cancel"          # Only match buttons labeled "Cancel"
 ```
 
 Implementation in `find_element`:
@@ -119,7 +119,7 @@ if element_type:
 When inspect shows numbered elements, allow tapping by index:
 
 ```
-sid tap --index 3    # Tap the 3rd interactive element on screen
+pippin tap --index 3    # Tap the 3rd interactive element on screen
 ```
 
 This is a last resort but useful when labels are ambiguous or missing.

@@ -1,6 +1,6 @@
-# Sid Improvement Plan
+# Pippin Improvement Plan
 
-Recommendations for making Sid more effective as an AI-agent bridge to the iOS Simulator. Organized into independent workstreams that can be tackled in any order, though the suggested priority reflects impact.
+Recommendations for making Pippin more effective as an AI-agent bridge to the iOS Simulator. Organized into independent workstreams that can be tackled in any order, though the suggested priority reflects impact.
 
 ## Priority Order
 
