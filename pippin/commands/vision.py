@@ -1,7 +1,7 @@
 import json
 import sys
-from sid.utils.executor import execute_command
-from sid.utils.ui import get_ui_tree
+from pippin.utils.executor import execute_command
+from pippin.utils.ui import get_ui_tree
 
 def inspect_cmd(interactive_only: bool = True, depth: int = None):
     if depth is not None:
@@ -32,7 +32,7 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None):
                        break
 
         # If we have a state file, use that as a fallback/source for bundle_id
-        from sid.commands.verification import STATE_FILE
+        from pippin.commands.verification import STATE_FILE
         import os
         if os.path.exists(STATE_FILE):
             try:

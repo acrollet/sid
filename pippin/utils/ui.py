@@ -1,7 +1,7 @@
 import sys
 import json
 import subprocess
-from sid.utils.executor import execute_command
+from pippin.utils.executor import execute_command
 
 def flatten_tree(nodes):
     flat_list = []

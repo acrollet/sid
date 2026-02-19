@@ -2,15 +2,15 @@
 
 **Impact:** High — reduces multi-call orientation to a single call.
 **Effort:** Medium
-**Files:** new `sid/commands/context.py`, `sid/main.py`
+**Files:** new `pippin/commands/context.py`, `pippin/main.py`
 
 ## Problem
 
 To understand "where am I and what can I do?", an AI agent currently needs:
 
-1. `sid inspect` — what elements are on screen?
-2. `sid screenshot` — what does it look like? (if multimodal)
-3. `sid logs` — did anything go wrong?
+1. `pippin inspect` — what elements are on screen?
+2. `pippin screenshot` — what does it look like? (if multimodal)
+3. `pippin logs` — did anything go wrong?
 4. Manual reasoning about which app is running, what screen this is, etc.
 
 That's 2-3 round-trips minimum, each costing latency and tokens. The agent also has to synthesize the results itself, which is error-prone.
@@ -18,7 +18,7 @@ That's 2-3 round-trips minimum, each costing latency and tokens. The agent also 
 ## Proposed Command
 
 ```
-sid context [--include-logs] [--screenshot <path>]
+pippin context [--include-logs] [--screenshot <path>]
 ```
 
 Returns a single JSON blob with everything an AI needs to orient:
@@ -64,7 +64,7 @@ Returns a single JSON blob with everything an AI needs to orient:
 
 ## Implementation
 
-### `sid/commands/context.py`
+### `pippin/commands/context.py`
 
 ```python
 def context_cmd(include_logs=False, screenshot_path=None):
@@ -146,10 +146,10 @@ No. `inspect` is for targeted UI queries during a flow. `context` is for orienta
 ## CLI Integration
 
 ```
-sid context                          → full context, no logs, no screenshot
-sid context --include-logs           → include last 20 lines of app logs
-sid context --screenshot state.png   → also capture a screenshot
-sid context --brief                  → just screen metadata, no UI tree
+pippin context                          → full context, no logs, no screenshot
+pippin context --include-logs           → include last 20 lines of app logs
+pippin context --screenshot state.png   → also capture a screenshot
+pippin context --brief                  → just screen metadata, no UI tree
 ```
 
 ## Testing

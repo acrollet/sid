@@ -1,8 +1,8 @@
 # 01: Preserve UI Hierarchy in Inspect Output
 
-**Impact:** Critical — this is the single biggest reason AI agents struggle with Sid.
+**Impact:** Critical — this is the single biggest reason AI agents struggle with Pippin.
 **Effort:** Medium
-**Files:** `sid/utils/ui.py`, `sid/commands/vision.py`
+**Files:** `pippin/utils/ui.py`, `pippin/commands/vision.py`
 
 ## Problem
 
@@ -108,10 +108,10 @@ def simplify_node(node, interactive_only=False, depth=None, current_depth=0):
 ### 3. Update `inspect_cmd` to use hierarchy by default
 
 ```
-sid inspect              → hierarchical output (new default)
-sid inspect --flat       → current flat behavior (backward compat)
-sid inspect --all        → hierarchical, no filtering
-sid inspect --depth 3    → limit nesting depth
+pippin inspect              → hierarchical output (new default)
+pippin inspect --flat       → current flat behavior (backward compat)
+pippin inspect --all        → hierarchical, no filtering
+pippin inspect --depth 3    → limit nesting depth
 ```
 
 ### Example: Hierarchical Output

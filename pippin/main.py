@@ -1,14 +1,14 @@
 import argparse
 import sys
-from sid.commands.vision import inspect_cmd, screenshot_cmd
-from sid.commands.interaction import tap_cmd, type_cmd, scroll_cmd, gesture_cmd
-from sid.commands.system import launch_cmd, stop_cmd, relaunch_cmd, open_cmd, permission_cmd, location_cmd, network_cmd
-from sid.commands.verification import assert_cmd, logs_cmd, tree_cmd, wait_cmd
-from sid.commands.doctor import doctor_cmd
+from pippin.commands.vision import inspect_cmd, screenshot_cmd
+from pippin.commands.interaction import tap_cmd, type_cmd, scroll_cmd, gesture_cmd
+from pippin.commands.system import launch_cmd, stop_cmd, relaunch_cmd, open_cmd, permission_cmd, location_cmd, network_cmd
+from pippin.commands.verification import assert_cmd, logs_cmd, tree_cmd, wait_cmd
+from pippin.commands.doctor import doctor_cmd
 
 def main():
     DESCRIPTION = """\
-Sid: A Token-Efficient CLI for iOS Automation
+Pippin: A Token-Efficient CLI for iOS Automation
 
 Vision:
   inspect           Inspect UI hierarchy and return a simplified JSON tree
@@ -41,7 +41,7 @@ Utils:
     parser = argparse.ArgumentParser(
         description=DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        usage="sid [command] [options]",
+        usage="pippin [command] [options]",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")

@@ -2,17 +2,17 @@
 
 **Impact:** Medium — eliminates the mandatory inspect-after-every-action pattern.
 **Effort:** Small
-**Files:** `sid/commands/interaction.py`, `sid/main.py`
+**Files:** `pippin/commands/interaction.py`, `pippin/main.py`
 
 ## Problem
 
-The typical AI agent loop with sid looks like:
+The typical AI agent loop with pippin looks like:
 
 ```
-sid tap "Settings"       → "Tapped at 187, 340"
-sid inspect              → { ... new screen ... }
-sid tap "General"        → "Tapped at 187, 540"
-sid inspect              → { ... new screen ... }
+pippin tap "Settings"       → "Tapped at 187, 340"
+pippin inspect              → { ... new screen ... }
+pippin tap "General"        → "Tapped at 187, 540"
+pippin inspect              → { ... new screen ... }
 ```
 
 Every action requires a follow-up `inspect` to see what happened. That's 2x the calls needed.
@@ -24,7 +24,7 @@ Every action requires a follow-up `inspect` to see what happened. That's 2x the 
 Add a global flag that appends an `inspect` result after any interaction command:
 
 ```
-sid tap "Settings" --inspect
+pippin tap "Settings" --inspect
 ```
 
 Output:
@@ -86,7 +86,7 @@ else:
 UI transitions take time. The `--inspect` should include a configurable settle delay:
 
 ```
-sid tap "Settings" --inspect --settle 0.5    # Wait 500ms before inspecting
+pippin tap "Settings" --inspect --settle 0.5    # Wait 500ms before inspecting
 ```
 
 Default: 300ms. This avoids capturing mid-animation states.
@@ -96,7 +96,7 @@ Default: 300ms. This avoids capturing mid-animation states.
 Combine with the wait command for transitions:
 
 ```
-sid tap "Settings" --wait "General" --inspect
+pippin tap "Settings" --wait "General" --inspect
 ```
 
 This means: tap Settings, wait until "General" appears in the UI, then return the inspect result. Useful for navigation transitions where the AI knows what to expect on the next screen.

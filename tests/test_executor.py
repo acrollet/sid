@@ -1,5 +1,5 @@
 import unittest
-from sid.utils.executor import execute_command, set_dry_run, register_mock_response, clear_mock_responses
+from pippin.utils.executor import execute_command, set_dry_run, register_mock_response, clear_mock_responses
 import subprocess
 
 class TestExecutor(unittest.TestCase):
