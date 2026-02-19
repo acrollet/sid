@@ -7,6 +7,8 @@ from pippin.commands.vision import simplify_node, screenshot_cmd
 from pippin.commands.verification import STATE_FILE
 from pippin.utils.errors import fail, ERR_COMMAND_FAILED, EXIT_COMMAND_FAILED
 
+from pippin.utils.device import get_target_udid
+
 def get_device_info():
     """Get info about the booted simulator."""
     try:
@@ -19,12 +21,21 @@ def get_device_info():
         
         data = json.loads(output)
         devices = data.get("devices", {})
-        # simctl json output is structured by runtime, e.g. "com.apple.CoreSimulator.SimRuntime.iOS-17-0": [...]
-        # We need to find the first booted device
+        
+        target_udid = None
+        try:
+            target_udid = get_target_udid()
+        except:
+            pass # If ambiguous or failed, we might default or show all? 
+                 # But context usually needs specific device context.
         
         for runtime, dev_list in devices.items():
             for dev in dev_list:
                 if dev.get("state") == "Booted":
+                    # If target set, filter. Else return first booted (legacy/auto behavior matches get_target_udid logic)
+                    if target_udid and dev.get("udid") != target_udid:
+                        continue
+                        
                     return {
                         "udid": dev.get("udid"),
                         "name": dev.get("name"),

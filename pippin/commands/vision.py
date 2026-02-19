@@ -175,12 +175,15 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
     except Exception as e:
         fail(ERR_COMMAND_FAILED, f"Could not inspect UI: {e}")
 
+from pippin.utils.device import get_simctl_target
+
 def screenshot_cmd(filename: str, mask_text: bool = False):
     if mask_text:
         print("WARNING: Text masking is not implemented.", file=sys.stderr)
 
     try:
-        execute_command(["xcrun", "simctl", "io", "booted", "screenshot", filename])
+        udid = get_simctl_target()
+        execute_command(["xcrun", "simctl", "io", udid, "screenshot", filename])
         print(json.dumps({"status": "success", "action": "screenshot", "file": filename}))
     except Exception as e:
         fail(ERR_COMMAND_FAILED, f"Screenshot failed: {e}")

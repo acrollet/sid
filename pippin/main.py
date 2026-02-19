@@ -16,35 +16,44 @@ Vision:
   screenshot        Capture the visual state for verification.
 
 Interaction:
-  tap               Tap a UI element (by label or X Y coordinates).
-  type              Input text into the currently focused field.
-  scroll            Scroll the screen.
-  gesture           Perform a specific gesture.
+Pippin: A Token-Efficient CLI for iOS Automation
 
-System:
-  launch            Launch an application.
-  stop              Terminate a running application.
-  relaunch          Stop and then start an application.
-  open              Open a URL scheme or Universal Link.
-  permission        Manage TCC (Privacy) permissions.
-  location          Simulate GPS coordinates.
-  network           Simulate network conditions (Not Supported).
+Overview:
+  • Vision & Context:
+    inspect [--flat]   View UI hierarchy (default: hierarchical, use --flat for flat list)
+    context            Get comprehensive state (device, app, screen, UI, logs)
+    screenshot <file>  Take a screenshot
 
-Verification:
-  assert            Perform a quick boolean check on the UI state.
-  wait              Wait for an element to reach a certain state.
-  logs              Fetch the tail of the system log for the target app.
-  tree              List files in the app's sandbox containers.
+  • Interaction:
+    tap <query>        Tap an element by label/ID
+    tap <x> <y>        Tap at coordinates
+    type <text>        Type text into focused element
+    scroll <dir>       Scroll (up/down/left/right)
+    gesture <type> ... Perform gestures (swipe, etc.)
 
-Utils:
-  doctor            Check if all dependencies (idb, xcrun) are installed.
+  • System:
+    launch <bundleId>  Launch an app
+    stop <bundleId>    Stop an app
+    open <url>         Open a URL (deep link or web)
+    home               Go to home screen
+
+  • Verification:
+    assert <query> <state>   Verify element state (exists/visible/text=...)
+    wait <query>             Wait for element to appear
+
+  • Device:
+    doctor             Check environment and list devices
+
+Options:
+  --device <udid>    Target a specific simulator (defaults to booted)
 """
 
     parser = argparse.ArgumentParser(
         description=DESCRIPTION,
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        usage="pippin [command] [options]",
+        usage="pippin [options] [command] [args]", # Update usage to show options before command
     )
+    parser.add_argument("--device", help="Target simulator UDID", default=None)
 
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
@@ -130,9 +139,14 @@ Utils:
     context_parser.add_argument("--include-logs", action="store_true", help="Include recent system logs.")
     context_parser.add_argument("--screenshot", help="Path to save a screenshot (e.g. screenshot.png).")
     context_parser.add_argument("--brief", action="store_true", help="Return only metadata, omit the full UI tree.")
-
     args = parser.parse_args()
+    
+    # Set global target device if provided
+    if args.device:
+        from pippin.utils.device import set_target_device
+        set_target_device(args.device)
 
+    # Dispatch commands
     if args.command == "inspect":
         inspect_cmd(interactive_only=args.interactive_only, depth=args.depth, flat=args.flat)
     elif args.command == "context":

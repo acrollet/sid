@@ -2,6 +2,7 @@ import sys
 import json
 import subprocess
 from pippin.utils.executor import execute_command
+from pippin.utils.device import get_target_udid
 
 def flatten_tree(nodes):
     flat_list = []
@@ -14,44 +15,32 @@ def flatten_tree(nodes):
     return flat_list
 
 def ensure_idb_connected(silent=False):
-    """Ensures idb is connected to the booted simulator."""
+    """Ensures idb is connected to the simulator."""
+    # idb needs explicit connection sometimes, especially for new sims.
+    # We'll try to connect to the target.
+    # If no target specified, idb connect <booted> logic is implied or we resolve it.
+    
     try:
-        targets = execute_command(["idb", "list-targets"], capture_output=True)
-        if not targets:
-            return False
-            
-        booted_udid = None
-        needs_connect = False
-        
-        for line in targets.split("\n"):
-            if "booted" in line.lower():
-                parts = line.split("|")
-                if len(parts) >= 2:
-                    booted_udid = parts[1].strip()
-                    if "no companion connected" in line.lower():
-                        needs_connect = True
-                    break
-        
-        if needs_connect and booted_udid:
-            if not silent:
-                print(f"Connecting idb companion to booted simulator ({booted_udid})...", file=sys.stderr)
-            execute_command(["idb", "connect", booted_udid], capture_output=True)
-            return True
-        return booted_udid is not None
-    except Exception as e:
-        if not silent:
-            print(f"Warning: Failed to ensure idb connection: {e}", file=sys.stderr)
-        return False
+        udid = get_target_udid()
+        # "idb connect <udid>"
+        execute_command(["idb", "connect", udid], check=False, capture_output=True)
+        return True
+    except Exception:
+        return False # Best effort
 
 def get_ui_tree(silent=False):
+    """Returns a flat list of UI elements from idb."""
     try:
         ensure_idb_connected(silent=silent)
-        output = execute_command(["idb", "ui", "describe-all"], capture_output=True)
+        udid = get_target_udid()
+        output = execute_command(["idb", "ui", "describe-all", "--udid", udid], capture_output=True)
         if not output:
             return []
         try:
-            tree = json.loads(output)
-            return flatten_tree(tree)
+            data = json.loads(output)
+            # define flatten helper inside or used from specialized function
+            flat = flatten_tree(data)
+            return flat
         except json.JSONDecodeError:
             return []
     except subprocess.CalledProcessError as e:
@@ -70,7 +59,8 @@ def get_ui_tree_hierarchical(silent=False):
     """Returns the raw nested tree from idb, with each node's children intact."""
     try:
         ensure_idb_connected(silent=silent)
-        output = execute_command(["idb", "ui", "describe-all"], capture_output=True)
+        udid = get_target_udid()
+        output = execute_command(["idb", "ui", "describe-all", "--udid", udid], capture_output=True)
         if not output:
             return []
         try:

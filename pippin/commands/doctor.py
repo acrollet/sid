@@ -2,6 +2,7 @@ import shutil
 import sys
 import os
 import subprocess
+import json
 from pippin.utils.executor import execute_command
 
 def _install_idb():
@@ -85,30 +86,51 @@ def doctor_cmd():
 
     print("\nEnvironment Check:")
     try:
-        targets = execute_command(["idb", "list-targets"], capture_output=True)
-        if targets and "booted" in targets.lower():
-            print("✅ iOS Simulator is currently booted.")
-        else:
-            print("⚠️  No booted iOS Simulator detected. Some commands may fail.")
-    except Exception:
-        print("❌ Could not communicate with idb.")
-        print("   Hint: Ensure 'idb-companion' is running. If you have a booted simulator, try:")
+        from pippin.utils.device import get_target_udid
+        # We catch explicit exit from get_target_udid if it fails (ambiguous) 
+        # but here we want to list devices first.
         
-        # Try to find a booted UDID to make the hint better
-        try:
-            targets = execute_command(["idb", "list-targets"], capture_output=True)
-            booted_udid = None
-            for line in targets.split("\n"):
-                if "booted" in line.lower() and "no companion connected" in line.lower():
-                    booted_udid = line.split("|")[1].strip()
-                    break
-            if booted_udid:
-                print(f"         idb connect {booted_udid}")
-            else:
-                print("         idb connect [UDID]")
-        except Exception:
-            print("         idb connect [UDID]")
+        # Manually list devices to show status
+        output = execute_command(["xcrun", "simctl", "list", "devices", "booted", "--json"], capture_output=True)
+        devices = json.loads(output)
+        
+        booted_list = []
+        for runtime, dev_list in devices.get("devices", {}).items():
+            for d in device_list:
+                if d.get("state") == "Booted":
+                    d["runtime"] = runtime.split(".")[-1]
+                    booted_list.append(d)
+
+        if not booted_list:
+            print("❌ No booted simulators found.")
+            print("   Hint: Launch a simulator via Xcode or 'xcrun simctl boot <UDID>'")
+        else:
+            print(f"✅ Found {len(booted_list)} booted simulator(s):")
             
+            # Try to resolve target to mark it
+            current_target = None
+            try:
+                current_target = get_target_udid()
+            except SystemExit:
+                pass # Ambiguous or none, we'll mark none
+            except Exception:
+                pass
+
+            for d in booted_list:
+                marker = " "
+                if current_target and d["udid"] == current_target:
+                    marker = "→"
+                
+                print(f"   {marker} {d['name']} ({d['udid']}) - {d['runtime']}")
+            
+            if len(booted_list) > 1 and not current_target:
+                print("\n   ⚠️  Multiple simulators booted. Target is ambiguous.")
+                print("      Use --device <UDID> or set PIPPIN_DEVICE_UDID to select one.")
+            elif current_target:
+                print(f"\n   Targeting: {current_target}")
+
+    except Exception as e:
+        print(f"❌ Error checking simulators: {e}")
         all_passed = False
 
     if all_passed:
