@@ -8,24 +8,23 @@ from pippin.utils.errors import (
     ERR_ELEMENT_NOT_FOUND, ERR_COORDINATES_NOT_FOUND, ERR_COMMAND_FAILED, ERR_INVALID_ARGS
 )
 
-def tap_cmd(query: str = None, x: int = None, y: int = None):
-    target_x, target_y = None, None
-
+def tap_cmd(query: str = None, x: int = None, y: int = None, strict: bool = False):
+    target_x, target_y = x, y
+    
     if query:
-        el = find_element(query)
-        if el:
-            center = get_center(el.get("frame", {}))
+        # Try to find element by ID or Label
+        element = find_element(query, strict=strict)
+        if element:
+            center = get_center(element.get("frame"))
             if center:
                 target_x, target_y = center
+                print(f"Tapping '{query}' at {target_x}, {target_y}...", file=sys.stderr)
             else:
-                 fail(ERR_COORDINATES_NOT_FOUND, f"Could not determine center for element '{query}'", EXIT_COMMAND_FAILED)
-        else:
+                fail(ERR_ELEMENT_NOT_FOUND, f"Element '{query}' found but has no frame.")
+        elif x is None or y is None:
              fail(ERR_ELEMENT_NOT_FOUND, f"Element '{query}' not found.", EXIT_ELEMENT_NOT_FOUND)
 
     # Fallback to coordinates if query failed or not provided
-    if target_x is None and x is not None and y is not None:
-        target_x, target_y = x, y
-
     if target_x is not None and target_y is not None:
         try:
             execute_command(["idb", "ui", "tap", str(target_x), str(target_y)])

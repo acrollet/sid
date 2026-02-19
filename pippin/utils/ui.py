@@ -79,22 +79,71 @@ def get_ui_tree_hierarchical(silent=False):
             print(f"Error fetching UI tree: {e}", file=sys.stderr)
         return []
 
-def find_element(query: str, silent=False):
+def find_element(query: str, silent=False, strict=False):
     elements = get_ui_tree(silent=silent)
     if not elements:
         return None
-    # 1. Exact Match: Accessibility Identifier
-    for el in elements:
-        if el.get("AXIdentifier") == query:
-            return el
 
-    # 2. Fuzzy Match: Label text
     query_lower = query.lower()
+    
+    # Check for type:label syntax
+    element_type = None
+    if ":" in query and not query.startswith("http"):
+        parts = query.split(":", 1)
+        if len(parts) == 2:
+            element_type, query_val = parts
+            element_type = element_type.lower()
+            query_lower = query_val.lower()
+            # We use query_val for matching now
+    else:
+        query_val = query
+
+    exact_id = []
+    exact_label = []
+    substring_label = []
+
     for el in elements:
-        label = el.get("AXLabel", "")
-        # Check if label contains query or matches
-        if label and query_lower in label.lower():
-            return el
+        # Filter by type if specified
+        if element_type:
+            role = (el.get("role") or "").lower().replace("ax", "")
+            if role != element_type:
+                continue
+
+        # Tier 1: Exact accessibility identifier
+        if el.get("AXIdentifier") == query_val:
+            exact_id.append(el)
+
+        label = (el.get("AXLabel") or "")
+        label_lower = label.lower()
+
+        # Tier 2: Exact label match (case-insensitive)
+        if label_lower == query_lower:
+            exact_label.append(el)
+
+        # Tier 3: Substring match (skip in strict mode)
+        elif not strict and query_lower in label_lower:
+            substring_label.append(el)
+
+    # Return best match
+    if exact_id:
+        if len(exact_id) > 1 and not silent:
+            # Identifier should ideally be unique, but if not, warn.
+            print(f"WARN: {len(exact_id)} elements matched id '{query_val}', using first.", file=sys.stderr)
+        return exact_id[0]
+
+    if exact_label:
+        if len(exact_label) > 1 and not silent:
+            print(f"WARN: {len(exact_label)} elements matched label '{query_val}', using first.", file=sys.stderr)
+            match_labels = [e.get('AXLabel') for e in exact_label[:5]]
+            print(f"      Matches: {match_labels}", file=sys.stderr)
+        return exact_label[0]
+
+    if substring_label:
+        if len(substring_label) > 1 and not silent:
+            print(f"WARN: {len(substring_label)} elements contain '{query_val}' in label, using first.", file=sys.stderr)
+            match_labels = [e.get('AXLabel') for e in substring_label[:5]]
+            print(f"      Matches: {match_labels} ...", file=sys.stderr)
+        return substring_label[0]
 
     return None
 

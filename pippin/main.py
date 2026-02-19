@@ -73,6 +73,7 @@ Options:
     tap_parser.add_argument("args", nargs="*", help="The accessibility identifier, label text, or X Y coordinates.")
     tap_parser.add_argument("--x", type=int, help="Fallback X coordinate if query fails or is not provided.")
     tap_parser.add_argument("--y", type=int, help="Fallback Y coordinate if query fails or is not provided.")
+    tap_parser.add_argument("--strict", action="store_true", help="Use strict matching (exact ID or label only, no substring).")
 
     type_parser = subparsers.add_parser("type", help="Input text into the currently focused field.")
     type_parser.add_argument("text", help="The text string to type.")
@@ -120,11 +121,13 @@ Options:
     assert_parser = subparsers.add_parser("assert", help="Perform a quick boolean check on the UI state.")
     assert_parser.add_argument("query", help="The element identifier or label to check.")
     assert_parser.add_argument("state", help="The expected state: 'exists', 'visible', 'hidden', or 'text=value'.")
+    assert_parser.add_argument("--strict", action="store_true", help="Use strict matching.")
 
     wait_parser = subparsers.add_parser("wait", help="Wait for an element to reach a certain state.")
     wait_parser.add_argument("query", help="The element identifier or label to wait for.")
     wait_parser.add_argument("--state", choices=["exists", "visible", "hidden"], default="visible", help="The state to wait for. Default: visible")
     wait_parser.add_argument("--timeout", type=float, default=10.0, help="Maximum time to wait in seconds. Default: 10.0")
+    wait_parser.add_argument("--strict", action="store_true", help="Use strict matching.")
 
     logs_parser = subparsers.add_parser("logs", help="Fetch the tail of the system log for the target app.")
     logs_parser.add_argument("--crash-report", action="store_true", help="Check if a crash log was generated in the last session.")
@@ -139,6 +142,7 @@ Options:
     context_parser.add_argument("--include-logs", action="store_true", help="Include recent system logs.")
     context_parser.add_argument("--screenshot", help="Path to save a screenshot (e.g. screenshot.png).")
     context_parser.add_argument("--brief", action="store_true", help="Return only metadata, omit the full UI tree.")
+
     args = parser.parse_args()
     
     # Set global target device if provided
@@ -164,7 +168,7 @@ Options:
                 query = " ".join(args.args)
         elif len(args.args) >= 1:
             query = " ".join(args.args)
-        tap_cmd(query=query, x=x, y=y)
+        tap_cmd(query=query, x=x, y=y, strict=args.strict)
     elif args.command == "type":
         type_cmd(args.text, submit=args.submit)
     elif args.command == "scroll":
@@ -186,9 +190,9 @@ Options:
     elif args.command == "network":
         network_cmd(args.condition)
     elif args.command == "assert":
-        assert_cmd(args.query, args.state)
+        assert_cmd(args.query, args.state, strict=args.strict)
     elif args.command == "wait":
-        wait_cmd(args.query, timeout=args.timeout, state=args.state)
+        wait_cmd(args.query, timeout=args.timeout, state=args.state, strict=args.strict)
     elif args.command == "logs":
         logs_cmd(crash_report=args.crash_report)
     elif args.command == "tree":
