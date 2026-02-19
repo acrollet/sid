@@ -7,9 +7,9 @@ from pippin.commands.verification import assert_cmd, logs_cmd, tree_cmd, wait_cm
 from pippin.commands.doctor import doctor_cmd
 
 def main():
-    if "-h" in sys.argv or "--help" in sys.argv:
-        print("Pippin: A CLI for iOS Automation")
-        print("""
+    DESCRIPTION = """\
+Pippin: A CLI for iOS Automation
+
 Vision:
   inspect           Inspect UI hierarchy and return a simplified JSON tree.
   screenshot        Capture the visual state for verification.
@@ -31,30 +31,19 @@ System:
 
 Verification:
   assert            Perform a quick boolean check on the UI state.
-  wait              Wait for an element to appear or disappear.
+  wait              Wait for an element to reach a certain state.
   logs              Fetch the tail of the system log for the target app.
   tree              List files in the app's sandbox containers.
 
 Utils:
   doctor            Check if all dependencies (idb, xcrun) are installed.
-
-Options:
-  -h, --help        Show this help message
-
-Examples:
-  pippin launch com.apple.Preferences --clean
-  pippin inspect
-  pippin tap "Settings"
-  pippin assert "General" visible
-""")
-        sys.exit(0)
+"""
 
     parser = argparse.ArgumentParser(
-        description="Pippin: A CLI for iOS Automation",
+        description=DESCRIPTION,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         usage="pippin [command] [options]",
-        add_help=False
     )
-    parser.add_argument('-h', '--help', action='store_true')
 
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
@@ -63,6 +52,7 @@ Examples:
     inspect_parser.add_argument("--interactive-only", action="store_true", default=True, help="Filter out structural containers and keep actionable elements (Button, TextField, Cell, Switch, StaticText). Default: True")
     inspect_parser.add_argument("--all", action="store_false", dest="interactive_only", help="Show all elements, disabling the interactive-only filter.")
     inspect_parser.add_argument("--depth", type=int, help="Limit the hierarchy depth to save tokens. (Note: Partial support)")
+    inspect_parser.add_argument("--flat", action="store_true", help="Return a flat list of elements instead of a hierarchical tree (Legacy mode).")
 
     screenshot_parser = subparsers.add_parser("screenshot", help="Capture the visual state for verification.")
     screenshot_parser.add_argument("filename", help="The output filename for the screenshot (e.g., screen.png).")
@@ -134,16 +124,10 @@ Examples:
 
     subparsers.add_parser("doctor", help="Check if all dependencies are installed.")
 
-    try:
-        args = parser.parse_args()
-    except SystemExit:
-        if '-h' in sys.argv or '--help' in sys.argv:
-            # This shouldn't be reached if we exit early, but as a safety:
-            sys.exit(0)
-        raise
+    args = parser.parse_args()
 
     if args.command == "inspect":
-        inspect_cmd(interactive_only=args.interactive_only, depth=args.depth)
+        inspect_cmd(interactive_only=args.interactive_only, depth=args.depth, flat=args.flat)
     elif args.command == "screenshot":
         screenshot_cmd(args.filename, mask_text=args.mask_text)
     elif args.command == "tap":
