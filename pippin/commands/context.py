@@ -5,6 +5,7 @@ from pippin.utils.executor import execute_command
 from pippin.utils.ui import get_ui_tree_hierarchical
 from pippin.commands.vision import simplify_node, screenshot_cmd
 from pippin.commands.verification import STATE_FILE
+from pippin.utils.errors import fail, ERR_COMMAND_FAILED, EXIT_COMMAND_FAILED
 
 def get_device_info():
     """Get info about the booted simulator."""
@@ -117,27 +118,31 @@ def get_recent_logs(lines=20):
 def context_cmd(include_logs: bool = False, screenshot_path: str = None, brief: bool = False):
     result = {}
 
-    # 1. Device info
-    result["device"] = get_device_info()
+    try:
+        # 1. Device info
+        result["device"] = get_device_info()
 
-    # 2. App info
-    result["app"] = get_app_info()
+        # 2. App info
+        result["app"] = get_app_info()
 
-    # 3. Screen analysis
-    tree = get_ui_tree_hierarchical()
-    result["screen"] = analyze_screen(tree)
+        # 3. Screen analysis
+        tree = get_ui_tree_hierarchical()
+        result["screen"] = analyze_screen(tree)
 
-    # 4. UI hierarchy
-    if not brief:
-        result["ui"] = [simplify_node(n) for n in tree]
-    
-    # 5. Optional logs
-    if include_logs:
-        result["logs"] = get_recent_logs()
+        # 4. UI hierarchy
+        if not brief:
+            result["ui"] = [simplify_node(n) for n in tree]
+        
+        # 5. Optional logs
+        if include_logs:
+            result["logs"] = get_recent_logs()
 
-    # 6. Optional screenshot
-    if screenshot_path:
-        screenshot_cmd(screenshot_path)
-        result["screenshot"] = screenshot_path
+        # 6. Optional screenshot
+        if screenshot_path:
+            screenshot_cmd(screenshot_path)
+            result["screenshot"] = screenshot_path
 
-    print(json.dumps(result, indent=2))
+        print(json.dumps(result, indent=2))
+        
+    except Exception as e:
+        fail(ERR_COMMAND_FAILED, f"Context command failed: {e}", EXIT_COMMAND_FAILED)

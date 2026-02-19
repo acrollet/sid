@@ -2,6 +2,7 @@ import json
 import sys
 from pippin.utils.executor import execute_command
 from pippin.utils.ui import get_ui_tree
+from pippin.utils.errors import fail, ERR_COMMAND_FAILED
 
 def simplify_node(node, interactive_only=False, depth=None, current_depth=0):
     """Recursively simplify a node, keeping children nested."""
@@ -169,8 +170,10 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
         
         print(json.dumps(result, indent=2))
 
+        print(json.dumps(result, indent=2))
+
     except Exception as e:
-        print(f"Error inspecting UI: {e}", file=sys.stderr)
+        fail(ERR_COMMAND_FAILED, f"Could not inspect UI: {e}")
 
 def screenshot_cmd(filename: str, mask_text: bool = False):
     if mask_text:
@@ -178,6 +181,6 @@ def screenshot_cmd(filename: str, mask_text: bool = False):
 
     try:
         execute_command(["xcrun", "simctl", "io", "booted", "screenshot", filename])
-        print(f"Screenshot saved to {filename}")
+        print(json.dumps({"status": "success", "action": "screenshot", "file": filename}))
     except Exception as e:
-        print(f"Error taking screenshot: {e}", file=sys.stderr)
+        fail(ERR_COMMAND_FAILED, f"Screenshot failed: {e}")

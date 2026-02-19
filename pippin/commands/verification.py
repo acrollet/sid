@@ -1,8 +1,13 @@
 import sys
 import os
 import time
+import json
 from pippin.utils.executor import execute_command
 from pippin.utils.ui import find_element
+from pippin.utils.errors import (
+    fail, EXIT_SUCCESS, EXIT_TIMEOUT, EXIT_ELEMENT_NOT_FOUND, EXIT_COMMAND_FAILED,
+    ERR_TIMEOUT, ERR_ELEMENT_NOT_FOUND, ERR_TEXT_MISMATCH, ERR_NO_TARGET_APP, ERR_COMMAND_FAILED
+)
 
 STATE_FILE = "/tmp/pippin_last_bundle_id"
 
@@ -13,49 +18,44 @@ def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible"):
         el = find_element(query, silent=True)
         if state == "visible" or state == "exists":
             if el:
-                print(f"PASS: Element '{query}' is {state}.")
+                print(json.dumps({"status": "success", "action": "wait", "query": query, "state": state}))
                 return
         elif state == "hidden":
             if not el:
-                print(f"PASS: Element '{query}' is hidden.")
+                print(json.dumps({"status": "success", "action": "wait", "query": query, "state": state}))
                 return
         time.sleep(0.5)
     
-    print(f"FAIL: ERR_TIMEOUT: Timeout waiting {timeout}s for '{query}' to be {state}.")
-    sys.exit(1)
+    fail(ERR_TIMEOUT, f"Timeout waiting {timeout}s for '{query}' to be {state}.", EXIT_TIMEOUT)
 
 def assert_cmd(query: str, state: str):
     el = find_element(query)
 
     if state == "exists" or state == "visible":
         if el:
-            print("PASS")
+            print(json.dumps({"status": "success", "action": "assert", "query": query, "state": state}))
         else:
-            print(f"FAIL: ERR_ELEMENT_NOT_FOUND: Element '{query}' not found.")
-            sys.exit(1)
+            fail(ERR_ELEMENT_NOT_FOUND, f"Element '{query}' not found.", EXIT_ELEMENT_NOT_FOUND)
 
     elif state == "hidden":
         if not el:
-            print("PASS")
+            print(json.dumps({"status": "success", "action": "assert", "query": query, "state": state}))
         else:
-            print(f"FAIL: ERR_ELEMENT_EXISTS: Element '{query}' found (expected hidden).")
-            sys.exit(1)
+            # Using EXIT_ELEMENT_NOT_FOUND semantics loosely here, or just generic failure
+            fail("ERR_ELEMENT_EXISTS", f"Element '{query}' found (expected hidden).", EXIT_COMMAND_FAILED)
 
     elif state.startswith("text="):
         expected_text = state.split("=", 1)[1]
         if not el:
-             print(f"FAIL: ERR_ELEMENT_NOT_FOUND: Element '{query}' not found.")
-             sys.exit(1)
+             fail(ERR_ELEMENT_NOT_FOUND, f"Element '{query}' not found.", EXIT_ELEMENT_NOT_FOUND)
 
         actual_text = el.get("AXValue") or el.get("AXLabel") or ""
         if str(actual_text) == expected_text:
-             print("PASS")
+             print(json.dumps({"status": "success", "action": "assert", "query": query, "state": state}))
         else:
-             print(f"FAIL: ERR_TEXT_MISMATCH: Element found but text was '{actual_text}', expected '{expected_text}'")
-             sys.exit(1)
+             fail(ERR_TEXT_MISMATCH, f"Element found but text was '{actual_text}', expected '{expected_text}'", EXIT_COMMAND_FAILED)
     else:
-        print(f"Unknown state: {state}", file=sys.stderr)
-        sys.exit(1)
+        fail("ERR_INVALID_ARGS", f"Unknown state: {state}", EXIT_COMMAND_FAILED)
 
 def logs_cmd(crash_report: bool = False):
     bundle_id = None
@@ -67,8 +67,7 @@ def logs_cmd(crash_report: bool = False):
             pass
 
     if not bundle_id:
-        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'pippin launch' first.", file=sys.stderr)
-        return
+        fail(ERR_NO_TARGET_APP, "Could not determine target app. Run 'pippin launch' first.", EXIT_COMMAND_FAILED)
 
     if crash_report:
         # Crash logs on macOS for simulators are typically in ~/Library/Logs/DiagnosticReports
@@ -99,16 +98,18 @@ def logs_cmd(crash_report: bool = False):
                         found_report = full_path
 
         if found_report:
-            print(f"CRASH_REPORT_FOUND: {found_report}")
             try:
                 with open(found_report, "r") as rf:
                     # IPS files are JSON-like but often contain a header. 
                     # We'll just output the first 100 lines for the LLM.
                     content = rf.readlines()
+                    # Output JSON wrapper? Or just raw text since logs are unstructured?
+                    # Let's keep it raw for logs/crash reports as they are large.
+                    print(f"CRASH_REPORT_FOUND: {found_report}")
                     print("--- STACK TRACE ---")
                     print("".join(content[:100]))
             except Exception as e:
-                print(f"ERR_READING_CRASH_LOG: {e}", file=sys.stderr)
+                fail(ERR_COMMAND_FAILED, f"Error reading crash log: {e}")
         else:
             print("NO_CRASH_REPORT_FOUND")
         return
@@ -121,7 +122,7 @@ def logs_cmd(crash_report: bool = False):
         output = execute_command(cmd, capture_output=True)
         print(output)
     except Exception as e:
-        print(f"Error fetching logs: {e}", file=sys.stderr)
+        fail(ERR_COMMAND_FAILED, f"Error fetching logs: {e}")
 
 def tree_cmd(directory: str):
     bundle_id = None
@@ -133,8 +134,7 @@ def tree_cmd(directory: str):
             pass
 
     if not bundle_id:
-        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'pippin launch' first.", file=sys.stderr)
-        return
+        fail(ERR_NO_TARGET_APP, "Could not determine target app. Run 'pippin launch' first.", EXIT_COMMAND_FAILED)
 
     subpath = ""
     if directory == "documents":
@@ -149,18 +149,16 @@ def tree_cmd(directory: str):
     try:
         container = execute_command(["xcrun", "simctl", "get_app_container", "booted", bundle_id, "data"])
         if not container:
-             print("Could not find app container.", file=sys.stderr)
-             return
+             fail(ERR_COMMAND_FAILED, "Could not find app container.")
 
         target_path = os.path.join(container, subpath)
 
         if not os.path.exists(target_path):
-             print(f"Directory {target_path} does not exist.", file=sys.stderr)
-             return
+             fail(ERR_COMMAND_FAILED, f"Directory {target_path} does not exist.")
 
         # List files using ls -R to be tree-like
         output = execute_command(["ls", "-R", target_path])
         print(output)
 
     except Exception as e:
-        print(f"Error listing files: {e}", file=sys.stderr)
+        fail(ERR_COMMAND_FAILED, f"Error listing files: {e}")
