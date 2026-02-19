@@ -54,6 +54,7 @@ Options:
         usage="pippin [options] [command] [args]", # Update usage to show options before command
     )
     parser.add_argument("--device", help="Target simulator UDID", default=None)
+    parser.add_argument("--inspect", action="store_true", help="Append an inspect of the resulting UI state after the command executes.")
 
     subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
 
@@ -143,6 +144,22 @@ Options:
     context_parser.add_argument("--screenshot", help="Path to save a screenshot (e.g. screenshot.png).")
     context_parser.add_argument("--brief", action="store_true", help="Return only metadata, omit the full UI tree.")
 
+    parser.add_argument("--device", help="Target simulator UDID", default=None)
+    parser.add_argument("--inspect", action="store_true", help="Append an inspect of the resulting UI state after the command executes.")
+
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
+
+    # ... (parsers definition omitted for brevity, they are unchanged) ...
+    # We need to make sure we don't accidentally remove them. 
+    # Since replace_file_content replaces a block, I should target the block *around* where I insert logic.
+    # Waittt, I can't just omit lines in ReplacementContent. 
+    # The previous instruction was to ADD the argument. 
+    # Then I need to wrap the dispatch logic.
+    # Let's do this in two steps or use a larger block.
+    # I'll use a large block for the dispatch logic replacement.
+    
+    # ... (skipping to dispatch) ...
+
     args = parser.parse_args()
     
     # Set global target device if provided
@@ -150,55 +167,119 @@ Options:
         from pippin.utils.device import set_target_device
         set_target_device(args.device)
 
-    # Dispatch commands
-    if args.command == "inspect":
-        inspect_cmd(interactive_only=args.interactive_only, depth=args.depth, flat=args.flat)
-    elif args.command == "context":
-        from pippin.commands.context import context_cmd
-        context_cmd(include_logs=args.include_logs, screenshot_path=args.screenshot, brief=args.brief)
-    elif args.command == "screenshot":
-        screenshot_cmd(args.filename, mask_text=args.mask_text)
-    elif args.command == "tap":
-        query = None
-        x, y = args.x, args.y
-        if len(args.args) == 2:
-            try:
-                x, y = int(args.args[0]), int(args.args[1])
-            except ValueError:
+    # Helper to run command and optionally inspect
+    def run_command_with_feedback():
+        # Dispatch logic
+        if args.command == "inspect":
+            inspect_cmd(interactive_only=args.interactive_only, depth=args.depth, flat=args.flat)
+        elif args.command == "context":
+            from pippin.commands.context import context_cmd
+            context_cmd(include_logs=args.include_logs, screenshot_path=args.screenshot, brief=args.brief)
+        elif args.command == "screenshot":
+            screenshot_cmd(args.filename, mask_text=args.mask_text)
+        elif args.command == "tap":
+            query = None
+            x, y = args.x, args.y
+            if len(args.args) == 2:
+                try:
+                    x, y = int(args.args[0]), int(args.args[1])
+                except ValueError:
+                    query = " ".join(args.args)
+            elif len(args.args) >= 1:
                 query = " ".join(args.args)
-        elif len(args.args) >= 1:
-            query = " ".join(args.args)
-        tap_cmd(query=query, x=x, y=y, strict=args.strict)
-    elif args.command == "type":
-        type_cmd(args.text, submit=args.submit)
-    elif args.command == "scroll":
-        scroll_cmd(args.direction, until_visible=args.until_visible)
-    elif args.command == "gesture":
-        gesture_cmd(args.type, args.args)
-    elif args.command == "launch":
-        launch_cmd(args.bundle_id, clean=args.clean, args=args.args, locale=args.locale)
-    elif args.command == "stop":
-        stop_cmd(args.bundle_id)
-    elif args.command == "relaunch":
-        relaunch_cmd(args.bundle_id, clean=args.clean, args=args.args, locale=args.locale)
-    elif args.command == "open":
-        open_cmd(args.url)
-    elif args.command == "permission":
-        permission_cmd(args.service, args.status)
-    elif args.command == "location":
-        location_cmd(args.lat, args.lon)
-    elif args.command == "network":
-        network_cmd(args.condition)
-    elif args.command == "assert":
-        assert_cmd(args.query, args.state, strict=args.strict)
-    elif args.command == "wait":
-        wait_cmd(args.query, timeout=args.timeout, state=args.state, strict=args.strict)
-    elif args.command == "logs":
-        logs_cmd(crash_report=args.crash_report)
-    elif args.command == "tree":
-        tree_cmd(args.directory)
-    elif args.command == "doctor":
-        doctor_cmd()
+            tap_cmd(query=query, x=x, y=y, strict=args.strict)
+        elif args.command == "type":
+            type_cmd(args.text, submit=args.submit)
+        elif args.command == "scroll":
+            scroll_cmd(args.direction, until_visible=args.until_visible)
+        elif args.command == "gesture":
+            gesture_cmd(args.type, args.args)
+        elif args.command == "launch":
+            launch_cmd(args.bundle_id, clean=args.clean, args=args.args, locale=args.locale)
+        elif args.command == "stop":
+            stop_cmd(args.bundle_id)
+        elif args.command == "relaunch":
+            relaunch_cmd(args.bundle_id, clean=args.clean, args=args.args, locale=args.locale)
+        elif args.command == "open":
+            open_cmd(args.url)
+        elif args.command == "permission":
+            permission_cmd(args.service, args.status)
+        elif args.command == "location":
+            location_cmd(args.lat, args.lon)
+        elif args.command == "network":
+            network_cmd(args.condition)
+        elif args.command == "assert":
+            assert_cmd(args.query, args.state, strict=args.strict)
+        elif args.command == "wait":
+            wait_cmd(args.query, timeout=args.timeout, state=args.state, strict=args.strict)
+        elif args.command == "logs":
+            logs_cmd(crash_report=args.crash_report)
+        elif args.command == "tree":
+            tree_cmd(args.directory)
+        elif args.command == "doctor":
+            doctor_cmd()
+
+    if args.inspect:
+        import time
+        import json
+        from pippin.utils.capture import capture_output
+        from pippin.utils.ui import get_ui_tree_hierarchical
+
+        # Capture command output
+        with capture_output() as (out, err):
+            try:
+                run_command_with_feedback()
+            except SystemExit as e:
+                # If command exited with code, we should probably respect it or capture it?
+                # But we want to inspect even if it failed? No, probably not.
+                if e.code != 0:
+                     sys.stderr.write(err.getvalue())
+                     print(out.getvalue())
+                     sys.exit(e.code)
+            except Exception as e:
+                sys.stderr.write(err.getvalue())
+                print(str(e)) # simplified
+                sys.exit(1)
+        
+        # Command output (captured)
+        cmd_out = out.getvalue().strip()
+        cmd_err = err.getvalue() # We print stderr to real stderr
+        
+        if cmd_err:
+            sys.stderr.write(cmd_err)
+
+        # Try parse action result
+        action_result = None
+        try:
+            action_result = json.loads(cmd_out)
+        except:
+            action_result = {"raw_output": cmd_out}
+
+        # Wait for settle
+        time.sleep(0.5)
+
+        # Inspect
+        # We need to manually call the logic from inspect_cmd because we want the object, not to print
+        # inspect_cmd prints.
+        # But we can reuse capture_output logic or just call get_ui_tree...
+        # Let's assume inspect_cmd logic is simple: get_ui_tree_hierarchical(interactive_only=True)
+        # We'll use interactive_only=True by default for feedback.
+        
+        ui_tree = []
+        try:
+             # Force interactive_only=True for feedback loop to be concise
+             ui_tree = get_ui_tree_hierarchical(interactive_only=True, depth=None)
+        except Exception as e:
+            ui_tree = {"error": str(e)}
+
+        combined = {
+            "action": action_result,
+            "ui": ui_tree
+        }
+        print(json.dumps(combined, indent=2))
+
+    else:
+        run_command_with_feedback()
 
 if __name__ == "__main__":
     main()
