@@ -1,9 +1,9 @@
 import sys
 import os
 import shlex
-from sid.utils.executor import execute_command
+from pippin.utils.executor import execute_command
 
-STATE_FILE = "/tmp/sid_last_bundle_id"
+STATE_FILE = "/tmp/pippin_last_bundle_id"
 
 def _get_app_container(bundle_id):
     try:
@@ -22,7 +22,7 @@ def launch_cmd(bundle_id: str, clean: bool = False, args: str = None, locale: st
                 pass
     
     if not bundle_id:
-        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first or provide a bundle ID.", file=sys.stderr)
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'pippin launch' first or provide a bundle ID.", file=sys.stderr)
         return
 
     if clean:
@@ -68,7 +68,7 @@ def stop_cmd(bundle_id: str = None):
                 pass
     
     if not bundle_id:
-        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first or provide a bundle ID.", file=sys.stderr)
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'pippin launch' first or provide a bundle ID.", file=sys.stderr)
         return
 
     try:
@@ -87,7 +87,7 @@ def relaunch_cmd(bundle_id: str = None, clean: bool = False, args: str = None, l
                 pass
     
     if not bundle_id:
-        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first or provide a bundle ID.", file=sys.stderr)
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'pippin launch' first or provide a bundle ID.", file=sys.stderr)
         return
 
     stop_cmd(bundle_id)
@@ -110,7 +110,7 @@ def permission_cmd(service: str, status: str):
             pass
 
     if not bundle_id:
-        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'sid launch' first.", file=sys.stderr)
+        print("ERR_NO_TARGET_APP: Could not determine target app. Run 'pippin launch' first.", file=sys.stderr)
         return
 
     try:

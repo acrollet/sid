@@ -3,11 +3,11 @@ import json
 import sys
 from unittest.mock import patch, MagicMock
 from io import StringIO
-import sid.commands.vision as vision
+import pippin.commands.vision as vision
 
 class TestVisionHierarchy(unittest.TestCase):
 
-    @patch('sid.commands.vision.get_ui_tree_hierarchical')
+    @patch('pippin.commands.vision.get_ui_tree_hierarchical')
     @patch('os.path.exists')
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.dynamic.app")
     def test_inspect_hierarchical(self, mock_file, mock_exists, mock_get_tree):
@@ -72,7 +72,7 @@ class TestVisionHierarchy(unittest.TestCase):
         cell = table["children"][0]
         self.assertEqual(cell["type"], "Cell")
 
-    @patch('sid.commands.vision.get_ui_tree')
+    @patch('pippin.commands.vision.get_ui_tree')
     @patch('os.path.exists')
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.dynamic.app")
     def test_inspect_flat(self, mock_file, mock_exists, mock_get_tree):

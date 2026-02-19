@@ -1,14 +1,14 @@
 import argparse
 import sys
-from sid.commands.vision import inspect_cmd, screenshot_cmd
-from sid.commands.interaction import tap_cmd, type_cmd, scroll_cmd, gesture_cmd
-from sid.commands.system import launch_cmd, stop_cmd, relaunch_cmd, open_cmd, permission_cmd, location_cmd, network_cmd
-from sid.commands.verification import assert_cmd, logs_cmd, tree_cmd, wait_cmd
-from sid.commands.doctor import doctor_cmd
+from pippin.commands.vision import inspect_cmd, screenshot_cmd
+from pippin.commands.interaction import tap_cmd, type_cmd, scroll_cmd, gesture_cmd
+from pippin.commands.system import launch_cmd, stop_cmd, relaunch_cmd, open_cmd, permission_cmd, location_cmd, network_cmd
+from pippin.commands.verification import assert_cmd, logs_cmd, tree_cmd, wait_cmd
+from pippin.commands.doctor import doctor_cmd
 
 def main():
     if "-h" in sys.argv or "--help" in sys.argv:
-        print("Sid: A CLI for iOS Automation")
+        print("Pippin: A CLI for iOS Automation")
         print("""
 Vision:
   inspect           Inspect UI hierarchy and return a simplified JSON tree.
@@ -42,16 +42,16 @@ Options:
   -h, --help        Show this help message
 
 Examples:
-  sid launch com.apple.Preferences --clean
-  sid inspect
-  sid tap "Settings"
-  sid assert "General" visible
+  pippin launch com.apple.Preferences --clean
+  pippin inspect
+  pippin tap "Settings"
+  pippin assert "General" visible
 """)
         sys.exit(0)
 
     parser = argparse.ArgumentParser(
-        description="Sid: A CLI for iOS Automation",
-        usage="sid [command] [options]",
+        description="Pippin: A CLI for iOS Automation",
+        usage="pippin [command] [options]",
         add_help=False
     )
     parser.add_argument('-h', '--help', action='store_true')

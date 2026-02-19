@@ -1,7 +1,7 @@
 import json
 import sys
-from sid.utils.executor import execute_command
-from sid.utils.ui import get_ui_tree, get_ui_tree_hierarchical
+from pippin.utils.executor import execute_command
+from pippin.utils.ui import get_ui_tree, get_ui_tree_hierarchical
 
 def simplify_node(node, interactive_only=False, depth=None, current_depth=0):
     """Recursively simplify a node, keeping children nested."""
@@ -56,7 +56,7 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
     try:
         # Detect app (common)
         detected_bundle = "unknown"
-        from sid.commands.verification import STATE_FILE
+        from pippin.commands.verification import STATE_FILE
         import os
         if os.path.exists(STATE_FILE):
             try:

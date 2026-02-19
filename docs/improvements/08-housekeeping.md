@@ -8,19 +8,19 @@
 
 ### 1. Duplicated STATE_FILE constant
 
-`STATE_FILE = "/tmp/sid_last_bundle_id"` is defined in both:
-- `sid/commands/system.py:6`
-- `sid/commands/verification.py:7`
+`STATE_FILE = "/tmp/pippin_last_bundle_id"` is defined in both:
+- `pippin/commands/system.py:6`
+- `pippin/commands/verification.py:7`
 
-And it's also read inline in `sid/commands/vision.py:35-42`.
+And it's also read inline in `pippin/commands/vision.py:35-42`.
 
 **Fix:** Move to a shared location:
 
 ```python
-# sid/utils/state.py
+# pippin/utils/state.py
 import os
 
-STATE_FILE = "/tmp/sid_last_bundle_id"
+STATE_FILE = "/tmp/pippin_last_bundle_id"
 
 def get_last_bundle_id() -> str | None:
     if os.path.exists(STATE_FILE):

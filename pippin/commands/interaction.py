@@ -1,7 +1,7 @@
 import sys
 import time
-from sid.utils.executor import execute_command
-from sid.utils.ui import get_ui_tree, find_element, get_center
+from pippin.utils.executor import execute_command
+from pippin.utils.ui import get_ui_tree, find_element, get_center
 
 def tap_cmd(query: str = None, x: int = None, y: int = None):
     target_x, target_y = None, None

@@ -2,7 +2,7 @@
 
 **Impact:** High — AI agents rely on exit codes to know if a command succeeded.
 **Effort:** Small
-**Files:** all command files, `sid/utils/errors.py` (new)
+**Files:** all command files, `pippin/utils/errors.py` (new)
 
 ## Problem
 
@@ -18,11 +18,11 @@ Exit code behavior is inconsistent across commands:
 | `logs` (no target app) | Prints to stderr | `0` |
 | `launch` (error) | Prints to stderr | `0` |
 
-An AI agent running `sid tap "Nonexistent"` gets exit code 0 and thinks it succeeded.
+An AI agent running `pippin tap "Nonexistent"` gets exit code 0 and thinks it succeeded.
 
 ## Proposed Error Model
 
-### 1. Define error codes in `sid/utils/errors.py`
+### 1. Define error codes in `pippin/utils/errors.py`
 
 ```python
 import sys
