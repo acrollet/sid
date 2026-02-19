@@ -12,11 +12,11 @@ import pippin.commands.verification as verification
 
 class TestCommands(unittest.TestCase):
 
-    @patch('pippin.commands.vision.get_ui_tree')
+    @patch('pippin.utils.ui.get_ui_tree_hierarchical')
     @patch('os.path.exists')
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.dynamic.app")
     def test_inspect_basic(self, mock_file, mock_exists, mock_get_tree):
-        # Mock tree structure
+        # Mock tree structure (hierarchical format now default)
         mock_data = [
             {"role": "Window", "AXIdentifier": "LoginView", "frame": {"x": 0, "y": 0, "w": 375, "h": 812}},
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login", "frame": {"x": 10, "y": 20, "w": 100, "h": 50}},
@@ -36,7 +36,113 @@ class TestCommands(unittest.TestCase):
         self.assertIn('"screen_id": "LoginView"', output)
         self.assertIn('"id": "btn1"', output)
         self.assertIn('"type": "Button"', output)
-        self.assertNotIn('"type": "Window"', output) # Interactive only filters window
+        self.assertIn('"type": "Window"', output) # Window is structural now
+        
+    @patch('pippin.utils.ui.get_ui_tree_hierarchical')
+    @patch('os.path.exists')
+    @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.dynamic.app")
+    def test_inspect_hierarchical(self, mock_file, mock_exists, mock_get_tree):
+        # Mock tree structure
+        mock_data = [
+            {
+                "role": "Window", 
+                "AXIdentifier": "LoginView",
+                "nodes": [
+                    {
+                        "role": "NavigationBar",
+                        "nodes": [
+                           {"role": "Button", "AXIdentifier": "BackBtn", "AXLabel": "Back"} 
+                        ]
+                    },
+                    {
+                        "role": "Button", 
+                        "AXIdentifier": "btn1", 
+                        "AXLabel": "Login"
+                    }
+                ]
+            }
+        ]
+        mock_get_tree.return_value = mock_data
+        mock_exists.return_value = True
+
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        try:
+            # Default is hierarchical
+            vision.inspect_cmd()
+        finally:
+            sys.stdout = sys.__stdout__
+
+        output = captured_output.getvalue()
+        data = json.loads(output)
+        
+        self.assertEqual(data["elements"][0]["type"], "Window")
+        self.assertEqual(data["elements"][0]["children"][0]["type"], "NavigationBar")
+        self.assertEqual(data["elements"][0]["children"][0]["children"][0]["label"], "Back")
+        
+    @patch('pippin.commands.vision.get_ui_tree')
+    @patch('os.path.exists')
+    @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.dynamic.app")
+    def test_inspect_flat_flag(self, mock_file, mock_exists, mock_get_tree):
+        # Mock tree structure
+        mock_data = [
+            {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login"}
+        ]
+        mock_get_tree.return_value = mock_data
+        mock_exists.return_value = True
+
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        try:
+            # Flat flag
+            vision.inspect_cmd(flat=True)
+        finally:
+            sys.stdout = sys.__stdout__
+
+        output = captured_output.getvalue()
+        self.assertIn('"id": "btn1"', output)
+        # Check that structure is flat list in 'elements'
+        data = json.loads(output)
+        self.assertTrue(isinstance(data["elements"], list))
+        self.assertNotIn("children", data["elements"][0])
+
+    @patch('pippin.utils.ui.get_ui_tree_hierarchical')
+    @patch('os.path.exists')
+    @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.dynamic.app")
+    def test_inspect_depth(self, mock_file, mock_exists, mock_get_tree):
+        # Mock deep tree
+        mock_data = [
+            {
+                "role": "Window", 
+                "nodes": [
+                    {
+                        "role": "View",
+                        "nodes": [
+                           {"role": "Button", "AXIdentifier": "DeepBtn"} 
+                        ]
+                    }
+                ]
+            }
+        ]
+        mock_get_tree.return_value = mock_data
+        mock_exists.return_value = True
+
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        try:
+            # Depth 0 means only top level
+            vision.inspect_cmd(interactive_only=False, depth=0)
+        finally:
+            sys.stdout = sys.__stdout__
+
+        output = captured_output.getvalue()
+        data = json.loads(output)
+        
+        # Window is depth 0. Children should be None or empty depending on logic.
+        # simplify_node: if current_depth > depth return None.
+        # Window is depth 0. Children are depth 1. 
+        # So children will be processed with current_depth=1. 1 > 0 is True, so return None.
+        self.assertNotIn("children", data["elements"][0])
 
     @patch('pippin.utils.ui.get_ui_tree') # Patch where find_element looks it up
     @patch('pippin.commands.interaction.execute_command')
