@@ -11,6 +11,7 @@ def main():
 Pippin: A CLI for iOS Automation
 
 Vision:
+  context           Get a composite context of the current state (Device, App, UI, etc).
   inspect           Inspect UI hierarchy and return a simplified JSON tree.
   screenshot        Capture the visual state for verification.
 
@@ -123,11 +124,20 @@ Utils:
     tree_parser.add_argument("directory", help="The directory to list: 'documents', 'caches', or 'tmp'.")
 
     subparsers.add_parser("doctor", help="Check if all dependencies are installed.")
+    
+    # Context
+    context_parser = subparsers.add_parser("context", help="Get a composite context of the current state (Device, App, UI, etc).")
+    context_parser.add_argument("--include-logs", action="store_true", help="Include recent system logs.")
+    context_parser.add_argument("--screenshot", help="Path to save a screenshot (e.g. screenshot.png).")
+    context_parser.add_argument("--brief", action="store_true", help="Return only metadata, omit the full UI tree.")
 
     args = parser.parse_args()
 
     if args.command == "inspect":
         inspect_cmd(interactive_only=args.interactive_only, depth=args.depth, flat=args.flat)
+    elif args.command == "context":
+        from pippin.commands.context import context_cmd
+        context_cmd(include_logs=args.include_logs, screenshot_path=args.screenshot, brief=args.brief)
     elif args.command == "screenshot":
         screenshot_cmd(args.filename, mask_text=args.mask_text)
     elif args.command == "tap":
