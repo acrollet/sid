@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A CLI for iOS Automation"
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = []
+dependencies = ["fb-idb"]
 
 [project.scripts]
 pippin = "pippin.main:main"

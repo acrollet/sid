@@ -62,7 +62,10 @@ def doctor_cmd():
 
         if not path and bin_name == "idb":
             print(f"❌ {bin_name} NOT FOUND")
-            choice = input(f"   Would you like to attempt to install {bin_name}? [y/N]: ").lower()
+            try:
+                choice = input(f"   Would you like to attempt to install {bin_name}? [y/N]: ").lower()
+            except (EOFError, KeyboardInterrupt):
+                choice = 'n'
             if choice == 'y':
                 if _install_idb():
                     path = shutil.which(bin_name)
@@ -96,7 +99,7 @@ def doctor_cmd():
         
         booted_list = []
         for runtime, dev_list in devices.get("devices", {}).items():
-            for d in device_list:
+            for d in dev_list:
                 if d.get("state") == "Booted":
                     d["runtime"] = runtime.split(".")[-1]
                     booted_list.append(d)
@@ -110,7 +113,13 @@ def doctor_cmd():
             # Try to resolve target to mark it
             current_target = None
             try:
-                current_target = get_target_udid()
+                import io
+                old_stderr = sys.stderr
+                sys.stderr = io.StringIO()  # Suppress fail() output from get_target_udid
+                try:
+                    current_target = get_target_udid()
+                finally:
+                    sys.stderr = old_stderr
             except SystemExit:
                 pass # Ambiguous or none, we'll mark none
             except Exception:

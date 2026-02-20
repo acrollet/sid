@@ -8,44 +8,41 @@ from pippin.commands.doctor import doctor_cmd
 
 def main():
     DESCRIPTION = """\
-Pippin: A CLI for iOS Automation
-
-Vision:
-  context           Get a composite context of the current state (Device, App, UI, etc).
-  inspect           Inspect UI hierarchy and return a simplified JSON tree.
-  screenshot        Capture the visual state for verification.
-
-Interaction:
 Pippin: A Token-Efficient CLI for iOS Automation
 
-Overview:
-  • Vision & Context:
+Commands:
+  Vision & Context:
     inspect [--flat]   View UI hierarchy (default: hierarchical, use --flat for flat list)
     context            Get comprehensive state (device, app, screen, UI, logs)
     screenshot <file>  Take a screenshot
 
-  • Interaction:
+  Interaction:
     tap <query>        Tap an element by label/ID
     tap <x> <y>        Tap at coordinates
     type <text>        Type text into focused element
     scroll <dir>       Scroll (up/down/left/right)
     gesture <type> ... Perform gestures (swipe, etc.)
 
-  • System:
+  System:
     launch <bundleId>  Launch an app
     stop <bundleId>    Stop an app
+    relaunch <bundleId> Stop and relaunch an app
     open <url>         Open a URL (deep link or web)
-    home               Go to home screen
+    permission <svc>   Manage TCC privacy permissions
+    location <lat> <lon> Simulate GPS coordinates
 
-  • Verification:
+  Verification:
     assert <query> <state>   Verify element state (exists/visible/text=...)
     wait <query>             Wait for element to appear
+    logs                     Fetch recent app logs
+    tree <dir>               List files in app sandbox
 
-  • Device:
+  Device:
     doctor             Check environment and list devices
 
-Options:
+Global Options:
   --device <udid>    Target a specific simulator (defaults to booted)
+  --inspect          After executing, append the resulting UI state
 """
 
     parser = argparse.ArgumentParser(
@@ -238,7 +235,7 @@ Options:
         action_result = None
         try:
             action_result = json.loads(cmd_out)
-        except:
+        except (json.JSONDecodeError, ValueError):
             action_result = {"raw_output": cmd_out}
 
         # Wait for settle

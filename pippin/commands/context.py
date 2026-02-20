@@ -25,8 +25,8 @@ def get_device_info():
         target_udid = None
         try:
             target_udid = get_target_udid()
-        except:
-            pass # If ambiguous or failed, we might default or show all? 
+        except (SystemExit, Exception):
+            pass # If ambiguous or failed, we might default or show all?
                  # But context usually needs specific device context.
         
         for runtime, dev_list in devices.items():

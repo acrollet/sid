@@ -7,8 +7,9 @@ import pippin.commands.context as context
 
 class TestContextCommand(unittest.TestCase):
 
+    @patch('pippin.commands.context.get_target_udid', return_value="UDID-1")
     @patch('pippin.commands.context.execute_command')
-    def test_get_device_info(self, mock_exec):
+    def test_get_device_info(self, mock_exec, mock_udid):
         # Mock simctl output
         mock_output = json.dumps({
             "devices": {

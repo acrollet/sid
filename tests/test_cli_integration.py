@@ -28,7 +28,7 @@ class TestCLIExitCodes(unittest.TestCase):
     def test_help_success(self):
         code, out, err = self.run_cli(["--help"])
         self.assertEqual(code, 0)
-        self.assertIn("Pippin: A CLI for iOS Automation", out)
+        self.assertIn("Pippin: A Token-Efficient CLI for iOS Automation", out)
 
 if __name__ == "__main__":
     unittest.main()
