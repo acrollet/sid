@@ -4,7 +4,7 @@ import os
 from pippin.utils.executor import execute_command
 from pippin.utils.ui import get_ui_tree_hierarchical
 from pippin.commands.vision import simplify_node, screenshot_cmd
-from pippin.commands.verification import STATE_FILE
+from pippin.utils.state import get_last_bundle_id
 from pippin.utils.errors import fail, ERR_COMMAND_FAILED, EXIT_COMMAND_FAILED
 
 from pippin.utils.device import get_target_udid
@@ -48,13 +48,7 @@ def get_device_info():
 
 def get_app_info():
     """Get info about the running app."""
-    bundle_id = None
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r") as f:
-                bundle_id = f.read().strip()
-        except IOError:
-            pass
+    bundle_id = get_last_bundle_id()
     
     return {
         "bundle_id": bundle_id,

@@ -9,13 +9,13 @@ from pippin.utils.errors import (
     ERR_TIMEOUT, ERR_ELEMENT_NOT_FOUND, ERR_TEXT_MISMATCH, ERR_NO_TARGET_APP, ERR_COMMAND_FAILED
 )
 
-STATE_FILE = "/tmp/pippin_last_bundle_id"
+from pippin.utils.state import get_last_bundle_id
 
-def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible"):
+def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible", strict: bool = False):
     """Waits for an element to reach a certain state."""
     start_time = time.time()
     while time.time() - start_time < timeout:
-        el = find_element(query, silent=True)
+        el = find_element(query, silent=True, strict=strict)
         if state == "visible" or state == "exists":
             if el:
                 print(json.dumps({"status": "success", "action": "wait", "query": query, "state": state}))
@@ -28,8 +28,8 @@ def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible"):
     
     fail(ERR_TIMEOUT, f"Timeout waiting {timeout}s for '{query}' to be {state}.", EXIT_TIMEOUT)
 
-def assert_cmd(query: str, state: str):
-    el = find_element(query)
+def assert_cmd(query: str, state: str, strict: bool = False):
+    el = find_element(query, strict=strict)
 
     if state == "exists" or state == "visible":
         if el:
@@ -59,12 +59,7 @@ def assert_cmd(query: str, state: str):
 
 def logs_cmd(crash_report: bool = False):
     bundle_id = None
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r") as f:
-                bundle_id = f.read().strip()
-        except IOError:
-            pass
+    bundle_id = get_last_bundle_id()
 
     if not bundle_id:
         fail(ERR_NO_TARGET_APP, "Could not determine target app. Run 'pippin launch' first.", EXIT_COMMAND_FAILED)
@@ -126,12 +121,7 @@ def logs_cmd(crash_report: bool = False):
 
 def tree_cmd(directory: str):
     bundle_id = None
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r") as f:
-                bundle_id = f.read().strip()
-        except IOError:
-            pass
+    bundle_id = get_last_bundle_id()
 
     if not bundle_id:
         fail(ERR_NO_TARGET_APP, "Could not determine target app. Run 'pippin launch' first.", EXIT_COMMAND_FAILED)

@@ -144,21 +144,7 @@ Options:
     context_parser.add_argument("--screenshot", help="Path to save a screenshot (e.g. screenshot.png).")
     context_parser.add_argument("--brief", action="store_true", help="Return only metadata, omit the full UI tree.")
 
-    parser.add_argument("--device", help="Target simulator UDID", default=None)
-    parser.add_argument("--inspect", action="store_true", help="Append an inspect of the resulting UI state after the command executes.")
 
-    subparsers = parser.add_subparsers(dest="command", required=True, help="Available commands")
-
-    # ... (parsers definition omitted for brevity, they are unchanged) ...
-    # We need to make sure we don't accidentally remove them. 
-    # Since replace_file_content replaces a block, I should target the block *around* where I insert logic.
-    # Waittt, I can't just omit lines in ReplacementContent. 
-    # The previous instruction was to ADD the argument. 
-    # Then I need to wrap the dispatch logic.
-    # Let's do this in two steps or use a larger block.
-    # I'll use a large block for the dispatch logic replacement.
-    
-    # ... (skipping to dispatch) ...
 
     args = parser.parse_args()
     

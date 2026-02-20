@@ -8,8 +8,7 @@ from pippin.utils.errors import (
     ERR_NO_TARGET_APP, ERR_COMMAND_FAILED
 )
 from pippin.utils.device import get_simctl_target, get_target_udid
-
-STATE_FILE = "/tmp/pippin_last_bundle_id"
+from pippin.utils.state import get_last_bundle_id, set_last_bundle_id
 
 def _get_app_container(bundle_id):
     try:
@@ -21,12 +20,7 @@ def _get_app_container(bundle_id):
 
 def launch_cmd(bundle_id: str, clean: bool = False, args: str = None, locale: str = None):
     if not bundle_id:
-        if os.path.exists(STATE_FILE):
-            try:
-                with open(STATE_FILE, "r") as f:
-                    bundle_id = f.read().strip()
-            except IOError:
-                pass
+        bundle_id = get_last_bundle_id()
     
     if not bundle_id:
         fail(ERR_NO_TARGET_APP, "Could not determine target app. Run 'pippin launch' first or provide a bundle ID.", EXIT_INVALID_ARGS)
@@ -52,28 +46,19 @@ def launch_cmd(bundle_id: str, clean: bool = False, args: str = None, locale: st
     if args:
         try:
             cmd.extend(shlex.split(args))
-        except:
+        except ValueError:
             cmd.append(args)
 
     try:
         execute_command(cmd)
         print(json.dumps({"status": "success", "action": "launch", "bundle_id": bundle_id}))
-        try:
-            with open(STATE_FILE, "w") as f:
-                f.write(bundle_id)
-        except IOError:
-            pass # Ignore if can't write state
+        set_last_bundle_id(bundle_id)
     except Exception as e:
         fail(ERR_COMMAND_FAILED, f"Error launching app: {e}")
 
 def stop_cmd(bundle_id: str = None):
     if not bundle_id:
-        if os.path.exists(STATE_FILE):
-            try:
-                with open(STATE_FILE, "r") as f:
-                    bundle_id = f.read().strip()
-            except IOError:
-                pass
+        bundle_id = get_last_bundle_id()
     
     if not bundle_id:
         fail(ERR_NO_TARGET_APP, "Could not determine target app. Run 'pippin launch' first or provide a bundle ID.", EXIT_INVALID_ARGS)
@@ -91,12 +76,7 @@ def relaunch_cmd(bundle_id: str = None, clean: bool = False, args: str = None, l
     # For now, let's just use them as is, but we need to resolve bundle_id first to pass it consistently.
     
     if not bundle_id:
-        if os.path.exists(STATE_FILE):
-            try:
-                with open(STATE_FILE, "r") as f:
-                    bundle_id = f.read().strip()
-            except IOError:
-                pass
+        bundle_id = get_last_bundle_id()
     
     if not bundle_id:
         fail(ERR_NO_TARGET_APP, "Could not determine target app.", EXIT_INVALID_ARGS)
@@ -121,12 +101,7 @@ def open_cmd(url: str):
 
 def permission_cmd(service: str, status: str):
     bundle_id = None
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r") as f:
-                bundle_id = f.read().strip()
-        except IOError:
-            pass
+    bundle_id = get_last_bundle_id()
 
     if not bundle_id:
         fail(ERR_NO_TARGET_APP, "Could not determine target app. Run 'pippin launch' first.", EXIT_INVALID_ARGS)

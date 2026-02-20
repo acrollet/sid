@@ -158,8 +158,9 @@ class TestCommands(unittest.TestCase):
         # Expect tap call with center: 10+50=60, 20+25=45
         mock_exec.assert_any_call(["idb", "ui", "tap", "60.0", "45.0"])
 
+    @patch('pippin.commands.system.get_simctl_target', return_value="booted")
     @patch('pippin.commands.system.execute_command')
-    def test_launch(self, mock_exec):
+    def test_launch(self, mock_exec, mock_target):
         system.launch_cmd("com.test.app", clean=True, args="-flag val", locale="en_US")
 
         # Check terminate call
@@ -185,7 +186,8 @@ class TestCommands(unittest.TestCase):
             sys.stdout = sys.__stdout__
 
         output = captured_output.getvalue().strip()
-        self.assertEqual(output, "PASS")
+        self.assertIn('"status": "success"', output)
+        self.assertIn('"action": "assert"', output)
 
     @patch('pippin.commands.interaction.get_ui_tree')
     def test_scroll_dynamic_dimensions(self, mock_get_tree):
@@ -220,7 +222,8 @@ class TestCommands(unittest.TestCase):
         captured_output = StringIO()
         sys.stderr = captured_output
         try:
-            interaction.tap_cmd(query="missing_btn")
+            with self.assertRaises(SystemExit):
+                interaction.tap_cmd(query="missing_btn")
         finally:
             sys.stderr = sys.__stderr__
 
@@ -325,7 +328,8 @@ class TestCommands(unittest.TestCase):
                 sys.stdout = sys.__stdout__
 
         output = captured_output.getvalue()
-        self.assertIn("PASS: Element 'btn1' is visible.", output)
+        self.assertIn('"status": "success"', output)
+        self.assertIn('"action": "wait"', output)
 
     @patch('pippin.utils.ui.get_ui_tree')
     @patch('pippin.commands.interaction.execute_command')
@@ -340,21 +344,23 @@ class TestCommands(unittest.TestCase):
         interaction.tap_cmd(query="Welcome")
         mock_exec.assert_any_call(["idb", "ui", "tap", "50.0", "50.0"])
 
+    @patch('pippin.commands.system.get_simctl_target', return_value="booted")
     @patch('pippin.commands.system.execute_command')
     @patch('os.path.exists', return_value=True)
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.test.app")
-    def test_stop(self, mock_file, mock_exists, mock_exec):
+    def test_stop(self, mock_file, mock_exists, mock_exec, mock_target):
         system.stop_cmd()
         # Verify terminate call
         mock_exec.assert_any_call(["xcrun", "simctl", "terminate", "booted", "com.test.app"])
 
+    @patch('pippin.commands.system.get_simctl_target', return_value="booted")
     @patch('pippin.commands.system.execute_command')
     @patch('os.path.exists', return_value=True)
     @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.test.app")
-    def test_relaunch(self, mock_file, mock_exists, mock_exec):
+    def test_relaunch(self, mock_file, mock_exists, mock_exec, mock_target):
         system.relaunch_cmd(clean=True)
         # Verify stop (terminate)
-        mock_exec.assert_any_call(["xcrun", "simctl", "terminate", "booted", "com.test.app"])
+        mock_exec.assert_any_call(["xcrun", "simctl", "terminate", "booted", "com.test.app"], check=False)
         # Verify launch
         expected_launch = ["xcrun", "simctl", "launch", "booted", "com.test.app"]
         mock_exec.assert_any_call(expected_launch)

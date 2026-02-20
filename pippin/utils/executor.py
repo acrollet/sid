@@ -55,7 +55,9 @@ def execute_command(command: list[str], check: bool = True, capture_output: bool
             capture_output=capture_output,
             text=True
         )
-        return result.stdout.strip() if result.stdout else ""
+        if capture_output:
+            return result.stdout.strip() if result.stdout else ""
+        return ""
     except subprocess.CalledProcessError as e:
         # Include stderr in the error message for better debugging if available
         if capture_output:

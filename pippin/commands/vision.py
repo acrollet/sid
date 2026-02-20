@@ -76,14 +76,8 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
                            detected_screen = el.get("AXLabel") or "MainScreen"
                            break
 
-            from pippin.commands.verification import STATE_FILE
-            import os
-            if os.path.exists(STATE_FILE):
-                try:
-                    with open(STATE_FILE, "r") as f:
-                        detected_bundle = f.read().strip()
-                except IOError:
-                    pass
+            from pippin.utils.state import get_last_bundle_id
+            detected_bundle = get_last_bundle_id() or "unknown"
 
             filtered_elements = []
             for el in elements:
@@ -147,15 +141,9 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
              detected_screen = "MainScreen"
 
         # Bundle ID from state file
-        from pippin.commands.verification import STATE_FILE
-        import os
-        if os.path.exists(STATE_FILE):
-            try:
-                with open(STATE_FILE, "r") as f:
-                    detected_bundle = f.read().strip()
-            except IOError:
-                pass
-
+        from pippin.utils.state import get_last_bundle_id
+        detected_bundle = get_last_bundle_id() or "unknown"
+        
         simplified_elements = []
         for node in tree:
             simplified = simplify_node(node, interactive_only, depth)
@@ -168,7 +156,6 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
             "elements": simplified_elements
         }
         
-        print(json.dumps(result, indent=2))
 
         print(json.dumps(result, indent=2))
 
