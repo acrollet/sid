@@ -44,7 +44,7 @@ def simplify_node(node, interactive_only=False, depth=None, current_depth=0):
     if value:
         result["value"] = value
     if isinstance(frame, dict):
-        result["frame"] = f"{frame.get('x',0)},{frame.get('y',0)},{frame.get('w',0)},{frame.get('h',0)}"
+        result["frame"] = f"{frame.get('x',0)},{frame.get('y',0)},{frame.get('width', frame.get('w', 0))},{frame.get('height', frame.get('h', 0))}"
     if children:
         result["children"] = children
 
@@ -92,7 +92,7 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
 
                 frame = el.get("frame", {})
                 if isinstance(frame, dict):
-                    frame_str = f"{frame.get('x',0)},{frame.get('y',0)},{frame.get('w',0)},{frame.get('h',0)}"
+                    frame_str = f"{frame.get('x',0)},{frame.get('y',0)},{frame.get('width', frame.get('w', 0))},{frame.get('height', frame.get('h', 0))}"
                 else:
                     frame_str = str(frame)
 

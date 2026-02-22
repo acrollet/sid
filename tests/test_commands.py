@@ -144,9 +144,10 @@ class TestCommands(unittest.TestCase):
         # So children will be processed with current_depth=1. 1 > 0 is True, so return None.
         self.assertNotIn("children", data["elements"][0])
 
+    @patch('pippin.commands.interaction.get_target_udid', return_value="test-udid")
     @patch('pippin.utils.ui.get_ui_tree') # Patch where find_element looks it up
     @patch('pippin.commands.interaction.execute_command')
-    def test_tap_with_query(self, mock_exec, mock_get_tree):
+    def test_tap_with_query(self, mock_exec, mock_get_tree, mock_udid):
         # Mock tree
         mock_data = [
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login", "frame": {"x": 10, "y": 20, "w": 100, "h": 50}}
@@ -155,8 +156,8 @@ class TestCommands(unittest.TestCase):
 
         interaction.tap_cmd(query="btn1")
 
-        # Expect tap call with center: 10+50=60, 20+25=45
-        mock_exec.assert_any_call(["idb", "ui", "tap", "60.0", "45.0"])
+        # Expect tap call with center: 10+50=60, 20+25=45 (rounded to int)
+        mock_exec.assert_any_call(["idb", "ui", "tap", "--udid", "test-udid", "60", "45"])
 
     @patch('pippin.commands.system.get_simctl_target', return_value="booted")
     @patch('pippin.commands.system.execute_command')
@@ -189,8 +190,9 @@ class TestCommands(unittest.TestCase):
         self.assertIn('"status": "success"', output)
         self.assertIn('"action": "assert"', output)
 
+    @patch('pippin.commands.interaction.get_target_udid', return_value="test-udid")
     @patch('pippin.commands.interaction.get_ui_tree')
-    def test_scroll_dynamic_dimensions(self, mock_get_tree):
+    def test_scroll_dynamic_dimensions(self, mock_get_tree, mock_udid):
         # Mock a large window (e.g. iPad)
         mock_data = [
             {"role": "Window", "frame": {"x": 0, "y": 0, "w": 1024, "h": 1366}}
@@ -204,16 +206,16 @@ class TestCommands(unittest.TestCase):
             self.assertTrue(mock_exec.called)
             args, _ = mock_exec.call_args
             cmd = args[0]
-            self.assertEqual(cmd[0:3], ["idb", "ui", "swipe"])
+            self.assertEqual(cmd[0:7], ["idb", "ui", "swipe", "--udid", "test-udid", "--duration", "0.5"])
             
             # Values for 1024x1366: 
             # cx=512.0, cy=683.0, swipe_len=546.4
-            # start_y=683.0 + 273.2 = 956.2
-            # end_y=683.0 - 273.2 = 409.8
-            self.assertAlmostEqual(float(cmd[3]), 512.0)
-            self.assertAlmostEqual(float(cmd[4]), 956.2)
-            self.assertAlmostEqual(float(cmd[5]), 512.0)
-            self.assertAlmostEqual(float(cmd[6]), 409.8)
+            # start_y=683.0 + 273.2 = 956.2 (rounds to 956)
+            # end_y=683.0 - 273.2 = 409.8 (rounds to 410)
+            self.assertEqual(cmd[7], "512")
+            self.assertEqual(cmd[8], "956")
+            self.assertEqual(cmd[9], "512")
+            self.assertEqual(cmd[10], "410")
 
     @patch('pippin.utils.ui.get_ui_tree')
     def test_tap_error_code(self, mock_get_tree):
@@ -331,9 +333,10 @@ class TestCommands(unittest.TestCase):
         self.assertIn('"status": "success"', output)
         self.assertIn('"action": "wait"', output)
 
+    @patch('pippin.commands.interaction.get_target_udid', return_value="test-udid")
     @patch('pippin.utils.ui.get_ui_tree')
     @patch('pippin.commands.interaction.execute_command')
-    def test_tap_partial_label(self, mock_exec, mock_get_tree):
+    def test_tap_partial_label(self, mock_exec, mock_get_tree, mock_udid):
         # Mock tree with a long label
         mock_data = [
             {"role": "Button", "AXIdentifier": "id123", "AXLabel": "Welcome to the App", "frame": {"x": 0, "y": 0, "w": 100, "h": 100}}
@@ -342,7 +345,7 @@ class TestCommands(unittest.TestCase):
 
         # Should match "Welcome"
         interaction.tap_cmd(query="Welcome")
-        mock_exec.assert_any_call(["idb", "ui", "tap", "50.0", "50.0"])
+        mock_exec.assert_any_call(["idb", "ui", "tap", "--udid", "test-udid", "50", "50"])
 
     @patch('pippin.commands.system.get_simctl_target', return_value="booted")
     @patch('pippin.commands.system.execute_command')

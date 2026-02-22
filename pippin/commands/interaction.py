@@ -3,6 +3,7 @@ import time
 import json
 from pippin.utils.executor import execute_command
 from pippin.utils.ui import get_ui_tree, find_element, get_center
+from pippin.utils.device import get_target_udid
 from pippin.utils.errors import (
     fail, EXIT_ELEMENT_NOT_FOUND, EXIT_COMMAND_FAILED, EXIT_INVALID_ARGS,
     ERR_ELEMENT_NOT_FOUND, ERR_COORDINATES_NOT_FOUND, ERR_COMMAND_FAILED, ERR_INVALID_ARGS
@@ -15,10 +16,32 @@ def tap_cmd(query: str = None, x: int = None, y: int = None, strict: bool = Fals
         # Try to find element by ID or Label
         element = find_element(query, strict=strict)
         if element:
-            center = get_center(element.get("frame"))
+            frame = element.get("frame")
+            center = get_center(frame)
             if center:
                 target_x, target_y = center
-                print(f"Tapping '{query}' at {target_x}, {target_y}...", file=sys.stderr)
+                
+                # Heuristic for zero-width elements (like in Lirum)
+                # If width is 0, we can't reliably tap it at x=0. 
+                # We should tap the middle of the screen at that Y.
+                try:
+                    w = float(frame.get("width", frame.get("w", 0)))
+                    if w == 0:
+                        # Find screen width from window or default
+                        screen_w = 375
+                        tree = get_ui_tree(silent=True)
+                        if tree:
+                            for el in tree:
+                                if el.get("role") == "Window":
+                                    f = el.get("frame", {})
+                                    screen_w = float(f.get("width", f.get("w", screen_w)))
+                                    break
+                        target_x = screen_w / 2
+                        print(f"Tapping '{query}' (zero-width) at screen center {target_x}, {target_y}...", file=sys.stderr)
+                    else:
+                        print(f"Tapping '{query}' at {target_x}, {target_y}...", file=sys.stderr)
+                except (ValueError, TypeError):
+                    print(f"Tapping '{query}' at {target_x}, {target_y}...", file=sys.stderr)
             else:
                 fail(ERR_ELEMENT_NOT_FOUND, f"Element '{query}' found but has no frame.")
         elif x is None or y is None:
@@ -27,8 +50,10 @@ def tap_cmd(query: str = None, x: int = None, y: int = None, strict: bool = Fals
     # Fallback to coordinates if query failed or not provided
     if target_x is not None and target_y is not None:
         try:
-            execute_command(["idb", "ui", "tap", str(target_x), str(target_y)])
-            print(json.dumps({"status": "success", "action": "tap", "target": f"{target_x},{target_y}"}))
+            udid = get_target_udid()
+            ix, iy = int(round(float(target_x))), int(round(float(target_y)))
+            execute_command(["idb", "ui", "tap", "--udid", udid, str(ix), str(iy)])
+            print(json.dumps({"status": "success", "action": "tap", "target": f"{ix},{iy}"}))
         except Exception as e:
             fail(ERR_COMMAND_FAILED, f"Tap failed: {e}")
     else:
@@ -37,9 +62,10 @@ def tap_cmd(query: str = None, x: int = None, y: int = None, strict: bool = Fals
 
 def type_cmd(text: str, submit: bool = False):
     try:
-        execute_command(["idb", "ui", "text", text])
+        udid = get_target_udid()
+        execute_command(["idb", "ui", "text", "--udid", udid, text])
         if submit:
-             execute_command(["idb", "ui", "key-sequence", "ENTER"])
+             execute_command(["idb", "ui", "key-sequence", "--udid", udid, "ENTER"])
         print(json.dumps({"status": "success", "action": "type", "text": text, "submit": submit}))
     except Exception as e:
         fail(ERR_COMMAND_FAILED, f"Type failed: {e}")
@@ -54,8 +80,8 @@ def scroll_cmd(direction: str, until_visible: str = None):
                 f = el.get("frame", {})
                 if isinstance(f, dict):
                     try:
-                        w = float(f.get("w", w or 375))
-                        h = float(f.get("h", h or 812))
+                        w = float(f.get("width", f.get("w", w or 375)))
+                        h = float(f.get("height", f.get("h", h or 812)))
                     except (ValueError, TypeError):
                         pass
                 if w and h:
@@ -86,7 +112,10 @@ def scroll_cmd(direction: str, until_visible: str = None):
         fail(ERR_INVALID_ARGS, f"Invalid direction: {direction}", EXIT_INVALID_ARGS)
 
     def perform_scroll():
-        execute_command(["idb", "ui", "swipe", str(start_x), str(start_y), str(end_x), str(end_y)])
+        udid = get_target_udid()
+        ixs, iys = int(round(start_x)), int(round(start_y))
+        ixe, iye = int(round(end_x)), int(round(end_y))
+        execute_command(["idb", "ui", "swipe", "--udid", udid, "--duration", "0.5", str(ixs), str(iys), str(ixe), str(iye)])
 
     try:
         if until_visible:
@@ -114,21 +143,27 @@ def scroll_cmd(direction: str, until_visible: str = None):
 
 def gesture_cmd(gesture_type: str, args: list):
     if gesture_type == "swipe":
-        # Expect 4 numbers. Can be in "x,y x,y" format or "x y x y"
+        # Expect 4 numbers and optional duration. 
+        # Can be in "x,y x,y" format or "x y x y" or "x y x y duration"
         flat_args = []
         for arg in args:
             flat_args.extend(arg.replace(',', ' ').split())
 
+        duration = "0.5" # Default for reliable scrolling
+        if len(flat_args) == 5:
+            duration = flat_args.pop()
+
         if len(flat_args) != 4:
-            fail(ERR_INVALID_ARGS, "Usage: gesture swipe start_x,start_y end_x,end_y", EXIT_INVALID_ARGS)
+            fail(ERR_INVALID_ARGS, "Usage: gesture swipe start_x,start_y end_x,end_y [duration]", EXIT_INVALID_ARGS)
 
         try:
              # Validate numbers
-             coords = [float(x) for x in flat_args]
-             execute_command(["idb", "ui", "swipe", str(coords[0]), str(coords[1]), str(coords[2]), str(coords[3])])
-             print(json.dumps({"status": "success", "action": "gesture", "type": "swipe", "coords": coords}))
+             coords = [int(round(float(x))) for x in flat_args]
+             udid = get_target_udid()
+             execute_command(["idb", "ui", "swipe", "--udid", udid, "--duration", str(duration), str(coords[0]), str(coords[1]), str(coords[2]), str(coords[3])])
+             print(json.dumps({"status": "success", "action": "gesture", "type": "swipe", "coords": coords, "duration": duration}))
         except ValueError:
-             fail(ERR_INVALID_ARGS, "Invalid coordinates for swipe.", EXIT_INVALID_ARGS)
+             fail(ERR_INVALID_ARGS, "Invalid coordinates or duration for swipe.", EXIT_INVALID_ARGS)
         except Exception as e:
             fail(ERR_COMMAND_FAILED, f"Swipe failed: {e}")
 
