@@ -136,7 +136,7 @@ def context_cmd(include_logs: bool = False, screenshot_path: str = None, brief: 
 
         # 4. UI hierarchy
         if not brief:
-            result["ui"] = [simplify_node(n) for n in tree]
+            result["ui"] = [s for n in tree if (s := simplify_node(n))]
         
         # 5. Optional logs
         if include_logs:

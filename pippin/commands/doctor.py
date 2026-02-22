@@ -4,48 +4,12 @@ import os
 import subprocess
 import json
 from pippin.utils.executor import execute_command
-
-def _install_idb():
-    print("\nAttempting to install idb dependencies...")
-    
-    if not shutil.which("brew"):
-        print("❌ Homebrew (brew) is not installed. Please install it from https://brew.sh/ first.")
-        return False
-
-    try:
-        print("1. Tapping facebook/fb...")
-        subprocess.run(["brew", "tap", "facebook/fb"], check=True)
-        
-        print("2. Installing idb-companion...")
-        subprocess.run(["brew", "install", "idb-companion"], check=True)
-        
-        print("3. Installing fb-idb (Python client)...")
-        # If we are in a uv-managed environment, 'pip' might not be available as a module.
-        # We try 'uv pip install' if uv is available, otherwise fallback to standard pip.
-        try:
-            if shutil.which("uv"):
-                print(f"   (Using 'uv pip install' for {sys.executable})")
-                subprocess.run(["uv", "pip", "install", "--python", sys.executable, "fb-idb"], check=True)
-            else:
-                subprocess.run([sys.executable, "-m", "pip", "install", "fb-idb"], check=True)
-        except subprocess.CalledProcessError:
-             # Last ditch effort: try just 'pip' with break-system-packages if on macOS
-             cmd = ["pip", "install", "fb-idb"]
-             if sys.platform == "darwin":
-                 cmd.append("--break-system-packages")
-             subprocess.run(cmd, check=True)
-        
-        print("\n✅ idb dependencies installed successfully.")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"\n❌ Installation failed: {e}")
-        return False
+from pippin.utils import wda
 
 def doctor_cmd():
     print("Checking Pippin dependencies...\n")
     
     dependencies = {
-        "idb": "Essential for UI inspection and advanced interactions.",
         "xcrun": "Essential for simulator control (simctl).",
     }
     
@@ -60,16 +24,6 @@ def doctor_cmd():
             if os.path.exists(local_bin):
                 path = local_bin
 
-        if not path and bin_name == "idb":
-            print(f"❌ {bin_name} NOT FOUND")
-            try:
-                choice = input(f"   Would you like to attempt to install {bin_name}? [y/N]: ").lower()
-            except (EOFError, KeyboardInterrupt):
-                choice = 'n'
-            if choice == 'y':
-                if _install_idb():
-                    path = shutil.which(bin_name)
-
         if path:
             print(f"✅ {bin_name} found at: {path}")
             try:
@@ -82,9 +36,30 @@ def doctor_cmd():
             except Exception:
                 pass
         else:
-            if bin_name != "idb" or (bin_name == "idb" and 'choice' in locals() and choice != 'y'):
-                print(f"❌ {bin_name} NOT FOUND")
-                print(f"   Hint: {description}")
+            print(f"❌ {bin_name} NOT FOUND")
+            print(f"   Hint: {description}")
+            all_passed = False
+
+    print("\nWebDriverAgent Check:")
+    has_wda = wda._get_wda_bundle_path() is not None
+    if has_wda:
+        print("✅ WebDriverAgent bundle found.")
+    else:
+        print("❌ WebDriverAgent bundle NOT FOUND.")
+        try:
+            choice = input("   Would you like to download and install WebDriverAgent? [y/N]: ").lower()
+        except (EOFError, KeyboardInterrupt):
+            choice = 'n'
+            
+        if choice == 'y':
+            try:
+                wda.install_wda()
+                print("✅ WebDriverAgent installed successfully.")
+                has_wda = True
+            except Exception as e:
+                print(f"❌ Failed to install WebDriverAgent: {e}")
+                all_passed = False
+        else:
             all_passed = False
 
     print("\nEnvironment Check:")
@@ -131,6 +106,13 @@ def doctor_cmd():
                     marker = "→"
                 
                 print(f"   {marker} {d['name']} ({d['udid']}) - {d['runtime']}")
+                
+                # Check WDA status if it's the active one
+                if current_target and d["udid"] == current_target and has_wda:
+                    if wda.ensure_wda_running():
+                        print("      ✅ WebDriverAgent is running.")
+                    else:
+                        print("      ⚠️  WebDriverAgent is not running. It will start automatically when needed.")
             
             if len(booted_list) > 1 and not current_target:
                 print("\n   ⚠️  Multiple simulators booted. Target is ambiguous.")

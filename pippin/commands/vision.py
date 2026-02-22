@@ -4,7 +4,7 @@ from pippin.utils.executor import execute_command
 from pippin.utils.ui import get_ui_tree
 from pippin.utils.errors import fail, ERR_COMMAND_FAILED
 
-def simplify_node(node, interactive_only=False, depth=None, current_depth=0):
+def simplify_node(node, interactive_only=False, depth=None, current_depth=0, include_hidden=False):
     """Recursively simplify a node, keeping children nested."""
     if depth is not None and current_depth > depth:
         return None
@@ -17,9 +17,13 @@ def simplify_node(node, interactive_only=False, depth=None, current_depth=0):
 
     children = []
     for child in node.get("nodes", []):
-        simplified = simplify_node(child, interactive_only, depth, current_depth + 1)
+        simplified = simplify_node(child, interactive_only, depth, current_depth + 1, include_hidden)
         if simplified:
             children.append(simplified)
+
+    # Prune non-visible leaf nodes unless include_hidden is set
+    if not include_hidden and node.get("visible") is False and not children:
+        return None
 
     # In interactive_only mode, skip non-interactive nodes that have no
     # interactive descendants
@@ -35,6 +39,19 @@ def simplify_node(node, interactive_only=False, depth=None, current_depth=0):
         ]
         if not is_interactive and not is_structural and not children:
             return None
+
+    # Collapse pure wrapper nodes: if a node has no label/id/value, is not
+    # a meaningful role, and has exactly one child, promote that child.
+    _meaningful_roles = {
+        "button", "textfield", "cell", "switch", "statictext", "link",
+        "image", "searchfield", "slider", "toggle", "navigationbar",
+        "tabbar", "table", "scrollview", "alert", "sheet", "toolbar",
+        "window", "application",
+    }
+    if (not label and not identifier and not value
+            and len(children) == 1
+            and role.lower().replace("ax", "") not in _meaningful_roles):
+        return children[0]
 
     result = {"type": role}
     if identifier:
@@ -146,7 +163,7 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
         
         simplified_elements = []
         for node in tree:
-            simplified = simplify_node(node, interactive_only, depth)
+            simplified = simplify_node(node, interactive_only, depth, include_hidden=not interactive_only)
             if simplified:
                 simplified_elements.append(simplified)
         

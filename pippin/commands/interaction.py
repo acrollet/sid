@@ -1,9 +1,8 @@
 import sys
 import time
 import json
-from pippin.utils.executor import execute_command
 from pippin.utils.ui import get_ui_tree, find_element, get_center
-from pippin.utils.device import get_target_udid
+from pippin.utils import wda
 from pippin.utils.errors import (
     fail, EXIT_ELEMENT_NOT_FOUND, EXIT_COMMAND_FAILED, EXIT_INVALID_ARGS,
     ERR_ELEMENT_NOT_FOUND, ERR_COORDINATES_NOT_FOUND, ERR_COMMAND_FAILED, ERR_INVALID_ARGS
@@ -50,9 +49,8 @@ def tap_cmd(query: str = None, x: int = None, y: int = None, strict: bool = Fals
     # Fallback to coordinates if query failed or not provided
     if target_x is not None and target_y is not None:
         try:
-            udid = get_target_udid()
             ix, iy = int(round(float(target_x))), int(round(float(target_y)))
-            execute_command(["idb", "ui", "tap", "--udid", udid, str(ix), str(iy)])
+            wda.tap(ix, iy)
             print(json.dumps({"status": "success", "action": "tap", "target": f"{ix},{iy}"}))
         except Exception as e:
             fail(ERR_COMMAND_FAILED, f"Tap failed: {e}")
@@ -62,10 +60,9 @@ def tap_cmd(query: str = None, x: int = None, y: int = None, strict: bool = Fals
 
 def type_cmd(text: str, submit: bool = False):
     try:
-        udid = get_target_udid()
-        execute_command(["idb", "ui", "text", "--udid", udid, text])
+        wda.type_text(text)
         if submit:
-             execute_command(["idb", "ui", "key-sequence", "--udid", udid, "ENTER"])
+             wda.press_key("ENTER")
         print(json.dumps({"status": "success", "action": "type", "text": text, "submit": submit}))
     except Exception as e:
         fail(ERR_COMMAND_FAILED, f"Type failed: {e}")
@@ -112,10 +109,9 @@ def scroll_cmd(direction: str, until_visible: str = None):
         fail(ERR_INVALID_ARGS, f"Invalid direction: {direction}", EXIT_INVALID_ARGS)
 
     def perform_scroll():
-        udid = get_target_udid()
         ixs, iys = int(round(start_x)), int(round(start_y))
         ixe, iye = int(round(end_x)), int(round(end_y))
-        execute_command(["idb", "ui", "swipe", "--udid", udid, "--duration", "0.5", str(ixs), str(iys), str(ixe), str(iye)])
+        wda.swipe(ixs, iys, ixe, iye, 0.5)
 
     try:
         if until_visible:
@@ -159,8 +155,7 @@ def gesture_cmd(gesture_type: str, args: list):
         try:
              # Validate numbers
              coords = [int(round(float(x))) for x in flat_args]
-             udid = get_target_udid()
-             execute_command(["idb", "ui", "swipe", "--udid", udid, "--duration", str(duration), str(coords[0]), str(coords[1]), str(coords[2]), str(coords[3])])
+             wda.swipe(coords[0], coords[1], coords[2], coords[3], float(duration))
              print(json.dumps({"status": "success", "action": "gesture", "type": "swipe", "coords": coords, "duration": duration}))
         except ValueError:
              fail(ERR_INVALID_ARGS, "Invalid coordinates or duration for swipe.", EXIT_INVALID_ARGS)

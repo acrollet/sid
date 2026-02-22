@@ -144,10 +144,9 @@ class TestCommands(unittest.TestCase):
         # So children will be processed with current_depth=1. 1 > 0 is True, so return None.
         self.assertNotIn("children", data["elements"][0])
 
-    @patch('pippin.commands.interaction.get_target_udid', return_value="test-udid")
     @patch('pippin.utils.ui.get_ui_tree') # Patch where find_element looks it up
-    @patch('pippin.commands.interaction.execute_command')
-    def test_tap_with_query(self, mock_exec, mock_get_tree, mock_udid):
+    @patch('pippin.utils.wda.tap')
+    def test_tap_with_query(self, mock_tap, mock_get_tree):
         # Mock tree
         mock_data = [
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login", "frame": {"x": 10, "y": 20, "w": 100, "h": 50}}
@@ -157,7 +156,7 @@ class TestCommands(unittest.TestCase):
         interaction.tap_cmd(query="btn1")
 
         # Expect tap call with center: 10+50=60, 20+25=45 (rounded to int)
-        mock_exec.assert_any_call(["idb", "ui", "tap", "--udid", "test-udid", "60", "45"])
+        mock_tap.assert_any_call(60, 45)
 
     @patch('pippin.commands.system.get_simctl_target', return_value="booted")
     @patch('pippin.commands.system.execute_command')
@@ -171,9 +170,8 @@ class TestCommands(unittest.TestCase):
         expected_launch = ["xcrun", "simctl", "launch", "booted", "com.test.app", "-AppleLanguages", "(en_US)", "-AppleLocale", "en_US", "-flag", "val"]
         mock_exec.assert_any_call(expected_launch)
 
-    @patch('pippin.commands.verification.execute_command')
     @patch('pippin.utils.ui.get_ui_tree')
-    def test_assert_exists(self, mock_get_tree, mock_exec):
+    def test_assert_exists(self, mock_get_tree):
         mock_data = [
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login"}
         ]
@@ -190,32 +188,25 @@ class TestCommands(unittest.TestCase):
         self.assertIn('"status": "success"', output)
         self.assertIn('"action": "assert"', output)
 
-    @patch('pippin.commands.interaction.get_target_udid', return_value="test-udid")
     @patch('pippin.commands.interaction.get_ui_tree')
-    def test_scroll_dynamic_dimensions(self, mock_get_tree, mock_udid):
+    def test_scroll_dynamic_dimensions(self, mock_get_tree):
         # Mock a large window (e.g. iPad)
         mock_data = [
             {"role": "Window", "frame": {"x": 0, "y": 0, "w": 1024, "h": 1366}}
         ]
         mock_get_tree.return_value = mock_data
 
-        with patch('pippin.commands.interaction.execute_command') as mock_exec:
+        with patch('pippin.utils.wda.swipe') as mock_swipe:
             interaction.scroll_cmd("down")
             
             # Get the actual call arguments
-            self.assertTrue(mock_exec.called)
-            args, _ = mock_exec.call_args
-            cmd = args[0]
-            self.assertEqual(cmd[0:7], ["idb", "ui", "swipe", "--udid", "test-udid", "--duration", "0.5"])
+            self.assertTrue(mock_swipe.called)
             
             # Values for 1024x1366: 
             # cx=512.0, cy=683.0, swipe_len=546.4
             # start_y=683.0 + 273.2 = 956.2 (rounds to 956)
             # end_y=683.0 - 273.2 = 409.8 (rounds to 410)
-            self.assertEqual(cmd[7], "512")
-            self.assertEqual(cmd[8], "956")
-            self.assertEqual(cmd[9], "512")
-            self.assertEqual(cmd[10], "410")
+            mock_swipe.assert_called_with(512, 956, 512, 410, 0.5)
 
     @patch('pippin.utils.ui.get_ui_tree')
     def test_tap_error_code(self, mock_get_tree):
@@ -262,13 +253,9 @@ class TestCommands(unittest.TestCase):
         self.assertIn("CRASH_REPORT_FOUND", output)
         self.assertIn("Stack trace line 1", output)
 
-    @patch('pippin.commands.doctor.execute_command')
-    @patch('shutil.which')
+    @patch('pippin.commands.doctor.wda._get_wda_bundle_path', return_value=None)
     @patch('builtins.input', return_value='n')
-    def test_doctor_fail_no_install(self, mock_input, mock_which, mock_exec):
-        # idb not found, xcrun found
-        mock_which.side_effect = lambda x: "/usr/bin/xcrun" if x == "xcrun" else None
-        
+    def test_doctor_fail_no_install(self, mock_input, mock_wda_path):
         captured_stdout = StringIO()
         sys.stdout = captured_stdout
         try:
@@ -279,26 +266,13 @@ class TestCommands(unittest.TestCase):
             sys.stdout = sys.__stdout__
 
         output = captured_stdout.getvalue()
-        # The prompt itself won't be in stdout because input() usually prints to stderr/terminal in some envs
-        # but in unittest it often doesn't capture the prompt string if mocked.
-        # Actually, let's just check if it correctly reported NOT FOUND.
-        self.assertIn("❌ idb NOT FOUND", output)
+        self.assertIn("❌ WebDriverAgent bundle NOT FOUND.", output)
         self.assertIn("⚠️  Some dependencies are missing or misconfigured.", output)
 
-    @patch('pippin.commands.doctor.execute_command')
-    @patch('shutil.which')
+    @patch('pippin.commands.doctor.wda.install_wda')
+    @patch('pippin.commands.doctor.wda._get_wda_bundle_path', return_value=None)
     @patch('builtins.input', return_value='y')
-    @patch('pippin.commands.doctor._install_idb', return_value=True)
-    def test_doctor_install_success(self, mock_install, mock_input, mock_which, mock_exec):
-        # Simulate idb missing initially, then found after install
-        mock_which.side_effect = ["/usr/bin/xcrun", None, "/path/to/idb"] # xcrun checked first? No, idb then xcrun
-        # Correct sequence:
-        # 1. shutil.which("idb") -> None
-        # 2. (after install) shutil.which("idb") -> /path/to/idb
-        # 3. shutil.which("xcrun") -> /usr/bin/xcrun
-        mock_which.side_effect = [None, "/path/to/idb", "/usr/bin/xcrun"]
-        mock_exec.return_value = "idb version 1.0"
-
+    def test_doctor_install_success(self, mock_input, mock_wda_path, mock_install):
         captured_stdout = StringIO()
         sys.stdout = captured_stdout
         try:
@@ -311,7 +285,7 @@ class TestCommands(unittest.TestCase):
 
         output = captured_stdout.getvalue()
         self.assertTrue(mock_install.called)
-        self.assertIn("✅ idb found at: /path/to/idb", output)
+        self.assertIn("✅ WebDriverAgent installed successfully.", output)
 
     @patch('pippin.utils.ui.get_ui_tree')
     def test_wait_success(self, mock_get_tree):
@@ -333,10 +307,9 @@ class TestCommands(unittest.TestCase):
         self.assertIn('"status": "success"', output)
         self.assertIn('"action": "wait"', output)
 
-    @patch('pippin.commands.interaction.get_target_udid', return_value="test-udid")
     @patch('pippin.utils.ui.get_ui_tree')
-    @patch('pippin.commands.interaction.execute_command')
-    def test_tap_partial_label(self, mock_exec, mock_get_tree, mock_udid):
+    @patch('pippin.utils.wda.tap')
+    def test_tap_partial_label(self, mock_tap, mock_get_tree):
         # Mock tree with a long label
         mock_data = [
             {"role": "Button", "AXIdentifier": "id123", "AXLabel": "Welcome to the App", "frame": {"x": 0, "y": 0, "w": 100, "h": 100}}
@@ -345,7 +318,7 @@ class TestCommands(unittest.TestCase):
 
         # Should match "Welcome"
         interaction.tap_cmd(query="Welcome")
-        mock_exec.assert_any_call(["idb", "ui", "tap", "--udid", "test-udid", "50", "50"])
+        mock_tap.assert_any_call(50, 50)
 
     @patch('pippin.commands.system.get_simctl_target', return_value="booted")
     @patch('pippin.commands.system.execute_command')

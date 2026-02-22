@@ -7,7 +7,7 @@ from pippin.utils.errors import (
     fail, EXIT_COMMAND_FAILED, EXIT_APP_NOT_RUNNING, EXIT_INVALID_ARGS,
     ERR_NO_TARGET_APP, ERR_COMMAND_FAILED
 )
-from pippin.utils.device import get_simctl_target, get_target_udid
+from pippin.utils.device import get_simctl_target
 from pippin.utils.state import get_last_bundle_id, set_last_bundle_id
 
 def _get_app_container(bundle_id):
@@ -115,10 +115,8 @@ def permission_cmd(service: str, status: str):
 
 def location_cmd(lat: str, lon: str):
     try:
-        # Try idb first
-        # idb set-location --udid ...
-        udid = get_target_udid() 
-        execute_command(["idb", "set-location", "--udid", udid, lat, lon])
+        udid = get_simctl_target() 
+        execute_command(["xcrun", "simctl", "location", udid, "set", f"{lat},{lon}"])
         print(json.dumps({"status": "success", "action": "location", "lat": lat, "lon": lon}))
     except Exception as e:
         fail(ERR_COMMAND_FAILED, f"Error setting location: {e}")

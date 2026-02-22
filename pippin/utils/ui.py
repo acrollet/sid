@@ -1,8 +1,5 @@
 import sys
-import json
-import subprocess
-from pippin.utils.executor import execute_command
-from pippin.utils.device import get_target_udid
+from pippin.utils import wda
 
 def flatten_tree(nodes):
     flat_list = []
@@ -14,66 +11,39 @@ def flatten_tree(nodes):
             flat_list.extend(flatten_tree(node["nodes"]))
     return flat_list
 
-def ensure_idb_connected(silent=False):
-    """Ensures idb is connected to the simulator."""
-    # idb needs explicit connection sometimes, especially for new sims.
-    # We'll try to connect to the target.
-    # If no target specified, idb connect <booted> logic is implied or we resolve it.
-    
-    try:
-        udid = get_target_udid()
-        # "idb connect <udid>"
-        execute_command(["idb", "connect", udid], check=False, capture_output=True)
-        return True
-    except Exception:
-        return False # Best effort
+from pippin.utils.device import get_target_udid
 
 def get_ui_tree(silent=False):
-    """Returns a flat list of UI elements from idb."""
+    """Returns a flat list of UI elements from WDA."""
     try:
-        ensure_idb_connected(silent=silent)
         udid = get_target_udid()
-        output = execute_command(["idb", "ui", "describe-all", "--udid", udid], capture_output=True)
-        if not output:
+        wda.start_wda(udid)
+        tree = wda.get_source_tree()
+        if not tree:
             return []
-        try:
-            data = json.loads(output)
-            # define flatten helper inside or used from specialized function
-            flat = flatten_tree(data)
-            return flat
-        except json.JSONDecodeError:
-            return []
-    except subprocess.CalledProcessError as e:
-        if not silent:
-            msg = f"Error fetching UI tree (exit {e.returncode})"
-            if e.stderr:
-                msg += f": {e.stderr.strip()}"
-            print(msg, file=sys.stderr)
-        return []
+        
+        # WDA returns a root element, we wrap it in a list to match idb structure
+        # or we just return the flattened tree of the root.
+        nodes = tree.get("nodes", []) if "nodes" in tree else [tree]
+        # Include the root node as well
+        flat = flatten_tree([tree])
+        return flat
     except Exception as e:
         if not silent:
-            print(f"Error fetching UI tree: {e}", file=sys.stderr)
+            msg = f"Error fetching UI tree: {e}"
+            print(msg, file=sys.stderr)
         return []
 
 def get_ui_tree_hierarchical(silent=False):
-    """Returns the raw nested tree from idb, with each node's children intact."""
+    """Returns the raw nested tree from WDA, with each node's children intact."""
     try:
-        ensure_idb_connected(silent=silent)
         udid = get_target_udid()
-        output = execute_command(["idb", "ui", "describe-all", "--udid", udid], capture_output=True)
-        if not output:
+        wda.start_wda(udid)
+        tree = wda.get_source_tree()
+        if not tree:
             return []
-        try:
-            return json.loads(output)  # Return as-is, preserving nesting
-        except json.JSONDecodeError:
-            return []
-    except subprocess.CalledProcessError as e:
-        if not silent:
-            msg = f"Error fetching UI tree (exit {e.returncode})"
-            if e.stderr:
-                msg += f": {e.stderr.strip()}"
-            print(msg, file=sys.stderr)
-        return []
+        # Return as a list of root elements to match previous idb behavior
+        return [tree]
     except Exception as e:
         if not silent:
             print(f"Error fetching UI tree: {e}", file=sys.stderr)
@@ -129,6 +99,10 @@ def find_element(query: str, silent=False, strict=False):
     substring_label = []
 
     for el in elements:
+        # Skip non-visible elements — they are off-screen and can't be tapped
+        if el.get("visible") is False:
+            continue
+
         # Filter by type if specified
         if element_type:
             role = (el.get("role") or el.get("type") or "").lower().replace("ax", "")
