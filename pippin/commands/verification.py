@@ -11,17 +11,26 @@ from pippin.utils.errors import (
 
 from pippin.utils.state import get_last_bundle_id
 
-def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible", strict: bool = False):
+def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible", strict: bool = False, scroll: bool = False):
     """Waits for an element to reach a certain state."""
     start_time = time.time()
+    from pippin.utils.ui import is_onscreen
+    from pippin.commands.interaction import scroll_cmd
+
     while time.time() - start_time < timeout:
         el = find_element(query, silent=True, strict=strict)
-        if state == "visible" or state == "exists":
+        if state == "visible":
+            if el and is_onscreen(el):
+                print(json.dumps({"status": "success", "action": "wait", "query": query, "state": state}))
+                return
+            elif scroll and not (el and is_onscreen(el)):
+                scroll_cmd("down", silent=True)
+        elif state == "exists":
             if el:
                 print(json.dumps({"status": "success", "action": "wait", "query": query, "state": state}))
                 return
         elif state == "hidden":
-            if not el:
+            if not el or not is_onscreen(el):
                 print(json.dumps({"status": "success", "action": "wait", "query": query, "state": state}))
                 return
         time.sleep(0.5)
@@ -29,20 +38,27 @@ def wait_cmd(query: str, timeout: float = 10.0, state: str = "visible", strict: 
     fail(ERR_TIMEOUT, f"Timeout waiting {timeout}s for '{query}' to be {state}.", EXIT_TIMEOUT)
 
 def assert_cmd(query: str, state: str, strict: bool = False):
+    from pippin.utils.ui import is_onscreen
     el = find_element(query, strict=strict)
 
-    if state == "exists" or state == "visible":
+    if state == "exists":
         if el:
             print(json.dumps({"status": "success", "action": "assert", "query": query, "state": state}))
         else:
             fail(ERR_ELEMENT_NOT_FOUND, f"Element '{query}' not found.", EXIT_ELEMENT_NOT_FOUND)
 
+    elif state == "visible":
+        if el and is_onscreen(el):
+            print(json.dumps({"status": "success", "action": "assert", "query": query, "state": state}))
+        else:
+            fail(ERR_ELEMENT_NOT_FOUND, f"Element '{query}' not found or not visible on screen.", EXIT_ELEMENT_NOT_FOUND)
+
     elif state == "hidden":
-        if not el:
+        if not el or not is_onscreen(el):
             print(json.dumps({"status": "success", "action": "assert", "query": query, "state": state}))
         else:
             # Using EXIT_ELEMENT_NOT_FOUND semantics loosely here, or just generic failure
-            fail("ERR_ELEMENT_EXISTS", f"Element '{query}' found (expected hidden).", EXIT_COMMAND_FAILED)
+            fail("ERR_ELEMENT_EXISTS", f"Element '{query}' found and visible (expected hidden).", EXIT_COMMAND_FAILED)
 
     elif state.startswith("text="):
         expected_text = state.split("=", 1)[1]

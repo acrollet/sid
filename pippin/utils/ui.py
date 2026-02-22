@@ -161,6 +161,40 @@ def find_element(query: str, silent=False, strict=False):
 
     return None
 
+def is_onscreen(el):
+    """Checks if an element's frame intersects with the device screen."""
+    f = el.get("frame")
+    if getattr(is_onscreen, "screen_w", None) is None:
+        tree = get_ui_tree(silent=True)
+        is_onscreen.screen_w = 375
+        is_onscreen.screen_h = 812
+        if tree:
+            for node in tree:
+                if node.get("role") in ["Window", "AXWindow", "AXApplication"]:
+                    wf = node.get("frame", {})
+                    try:
+                        is_onscreen.screen_w = float(wf.get("width", wf.get("w", is_onscreen.screen_w)))
+                        is_onscreen.screen_h = float(wf.get("height", wf.get("h", is_onscreen.screen_h)))
+                    except:
+                        pass
+                    break
+
+    if not isinstance(f, dict):
+        return False
+    try:
+        x = float(f.get("x", 0))
+        y = float(f.get("y", 0))
+        w = float(f.get("width", f.get("w", 0)))
+        h = float(f.get("height", f.get("h", 0)))
+        
+        if x + w <= 0 or x >= is_onscreen.screen_w:
+            return False
+        if y + h <= 0 or y >= is_onscreen.screen_h:
+            return False
+        return True
+    except:
+        return False
+
 def get_center(frame):
     if isinstance(frame, dict):
         try:

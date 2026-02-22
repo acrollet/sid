@@ -67,7 +67,7 @@ def simplify_node(node, interactive_only=False, depth=None, current_depth=0, inc
 
     return result
 
-def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = False):
+def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = False, query: str = None):
     if depth is not None:
         pass # Depth is now supported in simplified logic
 
@@ -122,6 +122,15 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
                 }
                 filtered_elements.append(mapped)
 
+            if query:
+                q = query.lower()
+                filtered_elements = [
+                    el for el in filtered_elements 
+                    if q in str(el.get("id", "")).lower() 
+                    or q in str(el.get("label", "")).lower() 
+                    or q in str(el.get("value", "")).lower()
+                ]
+
             result = {
                 "app": detected_bundle,
                 "screen_id": detected_screen,
@@ -161,11 +170,36 @@ def inspect_cmd(interactive_only: bool = True, depth: int = None, flat: bool = F
         from pippin.utils.state import get_last_bundle_id
         detected_bundle = get_last_bundle_id() or "unknown"
         
+        def filter_tree_by_query(node, q):
+            """Returns True if this node or any of its descendants matches the query."""
+            matches = False
+            if q in str(node.get("id", "")).lower(): matches = True
+            elif q in str(node.get("label", "")).lower(): matches = True
+            elif q in str(node.get("value", "")).lower(): matches = True
+            
+            filtered_children = []
+            if "children" in node:
+                for child in node["children"]:
+                    if filter_tree_by_query(child, q):
+                        filtered_children.append(child)
+                        matches = True
+                        
+            if filtered_children:
+                node["children"] = filtered_children
+            else:
+                node.pop("children", None)
+                
+            return matches
+
         simplified_elements = []
         for node in tree:
             simplified = simplify_node(node, interactive_only, depth, include_hidden=not interactive_only)
             if simplified:
-                simplified_elements.append(simplified)
+                if query:
+                    if filter_tree_by_query(simplified, query.lower()):
+                        simplified_elements.append(simplified)
+                else:
+                    simplified_elements.append(simplified)
         
         result = {
             "app": detected_bundle,

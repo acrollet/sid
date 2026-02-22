@@ -61,6 +61,7 @@ Global Options:
     inspect_parser.add_argument("--all", action="store_false", dest="interactive_only", help="Show all elements, disabling the interactive-only filter.")
     inspect_parser.add_argument("--depth", type=int, help="Limit the hierarchy depth to save tokens. (Note: Partial support)")
     inspect_parser.add_argument("--flat", action="store_true", help="Return a flat list of elements instead of a hierarchical tree (Legacy mode).")
+    inspect_parser.add_argument("--query", help="Filter the output to only elements matching this text (and their structural context).")
 
     screenshot_parser = subparsers.add_parser("screenshot", help="Capture the visual state for verification.")
     screenshot_parser.add_argument("filename", help="The output filename for the screenshot (e.g., screen.png).")
@@ -72,6 +73,7 @@ Global Options:
     tap_parser.add_argument("--x", type=int, help="Fallback X coordinate if query fails or is not provided.")
     tap_parser.add_argument("--y", type=int, help="Fallback Y coordinate if query fails or is not provided.")
     tap_parser.add_argument("--strict", action="store_true", help="Use strict matching (exact ID or label only, no substring).")
+    tap_parser.add_argument("--scroll", action="store_true", help="Automatically scroll down to find the element.")
 
     type_parser = subparsers.add_parser("type", help="Input text into the currently focused field.")
     type_parser.add_argument("text", help="The text string to type.")
@@ -126,6 +128,7 @@ Global Options:
     wait_parser.add_argument("--state", choices=["exists", "visible", "hidden"], default="visible", help="The state to wait for. Default: visible")
     wait_parser.add_argument("--timeout", type=float, default=10.0, help="Maximum time to wait in seconds. Default: 10.0")
     wait_parser.add_argument("--strict", action="store_true", help="Use strict matching.")
+    wait_parser.add_argument("--scroll", action="store_true", help="Automatically scroll down to find the element while waiting.")
 
     logs_parser = subparsers.add_parser("logs", help="Fetch the tail of the system log for the target app.")
     logs_parser.add_argument("--crash-report", action="store_true", help="Check if a crash log was generated in the last session.")
@@ -141,7 +144,29 @@ Global Options:
     context_parser.add_argument("--screenshot", help="Path to save a screenshot (e.g. screenshot.png).")
     context_parser.add_argument("--brief", action="store_true", help="Return only metadata, omit the full UI tree.")
 
-
+    # Pre-process sys.argv to allow global options at the end
+    raw_args = sys.argv[1:]
+    global_args = []
+    normal_args = []
+    i = 0
+    while i < len(raw_args):
+        arg = raw_args[i]
+        if arg == "--inspect":
+            global_args.append(arg)
+            i += 1
+        elif arg == "--device":
+            global_args.append(arg)
+            if i + 1 < len(raw_args):
+                global_args.append(raw_args[i+1])
+                i += 2
+            else:
+                i += 1
+        else:
+            normal_args.append(arg)
+            i += 1
+    
+    # We patch sys.argv so argparse sees globals first
+    sys.argv = [sys.argv[0]] + global_args + normal_args
 
     args = parser.parse_args()
     
@@ -154,7 +179,7 @@ Global Options:
     def run_command_with_feedback():
         # Dispatch logic
         if args.command == "inspect":
-            inspect_cmd(interactive_only=args.interactive_only, depth=args.depth, flat=args.flat)
+            inspect_cmd(interactive_only=args.interactive_only, depth=args.depth, flat=args.flat, query=args.query)
         elif args.command == "context":
             from pippin.commands.context import context_cmd
             context_cmd(include_logs=args.include_logs, screenshot_path=args.screenshot, brief=args.brief)
@@ -170,7 +195,7 @@ Global Options:
                     query = " ".join(args.args)
             elif len(args.args) >= 1:
                 query = " ".join(args.args)
-            tap_cmd(query=query, x=x, y=y, strict=args.strict)
+            tap_cmd(query=query, x=x, y=y, strict=args.strict, scroll=args.scroll)
         elif args.command == "type":
             type_cmd(args.text, submit=args.submit)
         elif args.command == "scroll":
@@ -194,7 +219,7 @@ Global Options:
         elif args.command == "assert":
             assert_cmd(args.query, args.state, strict=args.strict)
         elif args.command == "wait":
-            wait_cmd(args.query, timeout=args.timeout, state=args.state, strict=args.strict)
+            wait_cmd(args.query, timeout=args.timeout, state=args.state, strict=args.strict, scroll=args.scroll)
         elif args.command == "logs":
             logs_cmd(crash_report=args.crash_report)
         elif args.command == "tree":

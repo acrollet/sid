@@ -8,12 +8,18 @@ from pippin.utils.errors import (
     ERR_ELEMENT_NOT_FOUND, ERR_COORDINATES_NOT_FOUND, ERR_COMMAND_FAILED, ERR_INVALID_ARGS
 )
 
-def tap_cmd(query: str = None, x: int = None, y: int = None, strict: bool = False):
+def tap_cmd(query: str = None, x: int = None, y: int = None, strict: bool = False, scroll: bool = False):
     target_x, target_y = x, y
     
     if query:
         # Try to find element by ID or Label
         element = find_element(query, strict=strict)
+        
+        if not element and scroll:
+            print(f"Element '{query}' not found, auto-scrolling to find it...", file=sys.stderr)
+            scroll_cmd("down", until_visible=query, silent=True)
+            element = find_element(query, strict=strict)
+
         if element:
             frame = element.get("frame")
             center = get_center(frame)
@@ -67,7 +73,7 @@ def type_cmd(text: str, submit: bool = False):
     except Exception as e:
         fail(ERR_COMMAND_FAILED, f"Type failed: {e}")
 
-def scroll_cmd(direction: str, until_visible: str = None):
+def scroll_cmd(direction: str, until_visible: str = None, silent: bool = False):
     # Try to get screen dimensions from inspect
     tree = get_ui_tree(silent=True) # Silent to avoid polluting stdout on error
     w, h = None, None
@@ -118,7 +124,8 @@ def scroll_cmd(direction: str, until_visible: str = None):
             max_retries = 10
             # Check first before scrolling
             if find_element(until_visible, silent=True):
-                 print(json.dumps({"status": "success", "action": "scroll", "found": until_visible}))
+                 if not silent:
+                     print(json.dumps({"status": "success", "action": "scroll", "found": until_visible}))
                  return
 
             for i in range(max_retries):
@@ -127,13 +134,15 @@ def scroll_cmd(direction: str, until_visible: str = None):
                 perform_scroll()
                 time.sleep(1.0) # Wait for animation
                 if find_element(until_visible, silent=True):
-                    print(json.dumps({"status": "success", "action": "scroll", "found": until_visible}))
+                    if not silent:
+                        print(json.dumps({"status": "success", "action": "scroll", "found": until_visible}))
                     return
             
             fail(ERR_ELEMENT_NOT_FOUND, f"Element '{until_visible}' not found after scrolling.", EXIT_ELEMENT_NOT_FOUND)
         else:
             perform_scroll()
-            print(json.dumps({"status": "success", "action": "scroll", "direction": direction}))
+            if not silent:
+                print(json.dumps({"status": "success", "action": "scroll", "direction": direction}))
     except Exception as e:
          fail(ERR_COMMAND_FAILED, f"Scroll failed: {e}")
 

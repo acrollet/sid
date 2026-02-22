@@ -158,6 +158,49 @@ class TestCommands(unittest.TestCase):
         # Expect tap call with center: 10+50=60, 20+25=45 (rounded to int)
         mock_tap.assert_any_call(60, 45)
 
+    @patch('pippin.commands.interaction.scroll_cmd')
+    @patch('pippin.utils.ui.get_ui_tree')
+    @patch('pippin.utils.wda.tap')
+    def test_tap_with_scroll(self, mock_tap, mock_get_tree, mock_scroll_cmd):
+        # First call finds none, second call finds it
+        mock_data_1 = []
+        mock_data_2 = [{"role": "Button", "AXIdentifier": "btn1", "frame": {"x": 10, "y": 20, "w": 100, "h": 50}}]
+        mock_get_tree.side_effect = [mock_data_1, mock_data_2]
+        
+        interaction.tap_cmd(query="btn1", scroll=True)
+        
+        mock_scroll_cmd.assert_called_once_with("down", until_visible="btn1", silent=True)
+        mock_tap.assert_called_once()
+
+    @patch('pippin.utils.ui.get_ui_tree_hierarchical')
+    @patch('os.path.exists', return_value=True)
+    @patch('builtins.open', new_callable=unittest.mock.mock_open, read_data="com.test.app")
+    def test_inspect_with_query(self, mock_open, mock_exists, mock_get_tree):
+        mock_data = [
+            {
+                "role": "Window", 
+                "AXIdentifier": "LoginView",
+                "nodes": [
+                    {"role": "Button", "AXIdentifier": "BackBtn", "AXLabel": "Back"},
+                    {"role": "Button", "AXIdentifier": "LoginBtn", "AXLabel": "Login"}
+                ]
+            }
+        ]
+        mock_get_tree.return_value = mock_data
+        
+        captured_output = StringIO()
+        sys.stdout = captured_output
+        try:
+            vision.inspect_cmd(query="Login")
+        finally:
+            sys.stdout = sys.__stdout__
+
+        output = captured_output.getvalue()
+        
+        # Should contain Login but not Back
+        self.assertIn("LoginBtn", output)
+        self.assertNotIn("BackBtn", output)
+
     @patch('pippin.commands.system.get_simctl_target', return_value="booted")
     @patch('pippin.commands.system.execute_command')
     def test_launch(self, mock_exec, mock_target):
@@ -170,8 +213,9 @@ class TestCommands(unittest.TestCase):
         expected_launch = ["xcrun", "simctl", "launch", "booted", "com.test.app", "-AppleLanguages", "(en_US)", "-AppleLocale", "en_US", "-flag", "val"]
         mock_exec.assert_any_call(expected_launch)
 
+    @patch('pippin.utils.ui.is_onscreen', return_value=True)
     @patch('pippin.utils.ui.get_ui_tree')
-    def test_assert_exists(self, mock_get_tree):
+    def test_assert_exists(self, mock_get_tree, mock_is_onscreen):
         mock_data = [
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login"}
         ]
@@ -287,8 +331,9 @@ class TestCommands(unittest.TestCase):
         self.assertTrue(mock_install.called)
         self.assertIn("✅ WebDriverAgent installed successfully.", output)
 
+    @patch('pippin.utils.ui.is_onscreen', return_value=True)
     @patch('pippin.utils.ui.get_ui_tree')
-    def test_wait_success(self, mock_get_tree):
+    def test_wait_success(self, mock_get_tree, mock_is_onscreen):
         # Element found on second try
         mock_data = [
             {"role": "Button", "AXIdentifier": "btn1", "AXLabel": "Login"}

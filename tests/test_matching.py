@@ -69,5 +69,25 @@ class TestElementMatching(unittest.TestCase):
         self.assertIn("WARN", mock_stderr.getvalue())
         self.assertIn("matched label 'Duplicate'", mock_stderr.getvalue())
 
+    @patch('pippin.utils.ui.get_ui_tree')
+    def test_is_onscreen(self, mock_get_tree):
+        from pippin.utils.ui import is_onscreen
+        if hasattr(is_onscreen, "screen_w"):
+            delattr(is_onscreen, "screen_w")
+            
+        mock_get_tree.return_value = [{"role": "Window", "frame": {"width": 375, "height": 812}}]
+        
+        el_on = {"frame": {"x": 100, "y": 100, "width": 50, "height": 50}}
+        self.assertTrue(is_onscreen(el_on))
+        
+        el_off_r = {"frame": {"x": 400, "y": 100, "width": 50, "height": 50}}
+        self.assertFalse(is_onscreen(el_off_r))
+        
+        el_off_b = {"frame": {"x": 100, "y": 900, "width": 50, "height": 50}}
+        self.assertFalse(is_onscreen(el_off_b))
+        
+        el_off_t = {"frame": {"x": 100, "y": -100, "width": 50, "height": 50}}
+        self.assertFalse(is_onscreen(el_off_t))
+
 if __name__ == "__main__":
     unittest.main()

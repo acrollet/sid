@@ -30,5 +30,14 @@ class TestCLIExitCodes(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("Pippin: A Token-Efficient CLI for iOS Automation", out)
 
+    def test_global_args_positioning(self):
+        # We test that "pippin tap X --inspect" is correctly rewritten and parsed,
+        # rather than throwing an "unrecognized arguments: --inspect" error.
+        code, out, err = self.run_cli(["tap", "missing_btn", "--inspect"])
+        
+        # Argparse error on unrecognized arguments typically results in exit code 2 (EXIT_INVALID_ARGS).
+        # We verify it doesn't fail parsing.
+        self.assertNotEqual(code, EXIT_INVALID_ARGS, f"Argparse failed on trailing global option: {err}")
+
 if __name__ == "__main__":
     unittest.main()
