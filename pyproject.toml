@@ -1,12 +1,30 @@
 [project]
-name = "pippin"
+name = "pippin-ios"
 version = "0.1.0"
 description = "A CLI for iOS Automation"
 readme = "README.md"
 requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "acrollet" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing",
+]
 dependencies = [
     "pyobjc-framework-applicationservices>=11.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/acrollet/pippin"
+Repository = "https://github.com/acrollet/pippin"
+Issues = "https://github.com/acrollet/pippin/issues"
 
 [project.scripts]
 pippin = "pippin.main:main"
@@ -14,3 +32,11 @@ pippin = "pippin.main:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = ["pippin/", "LICENSE", "README.md", "pyproject.toml"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pippin"]
+
+
